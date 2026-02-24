@@ -6,3 +6,7 @@ output.json
 .DS_Store
 **/.DS_Store
 reports/
+web/.env.local
+web/.next/
+web/node_modules/
+"Screenshot*.png"

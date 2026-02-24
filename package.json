@@ -28,7 +28,9 @@
     "test:coverage": "vitest run --coverage",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "trigger:dev": "npx trigger.dev@latest dev",
+    "trigger:deploy": "npx trigger.dev@latest deploy"
   },
   "keywords": [
     "palantir",
@@ -50,6 +52,7 @@
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
+    "@trigger.dev/sdk": "^4.4.1",
     "axios": "^1.7.2",
     "chalk": "^4.1.2",
     "commander": "^12.1.0",
