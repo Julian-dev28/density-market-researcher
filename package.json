@@ -16,6 +16,7 @@
     "dry-run": "tsx src/index.ts --dry-run",
     "dry-run:crypto": "tsx src/index.ts --dry-run --mode crypto",
     "dry-run:all": "tsx src/index.ts --dry-run --mode all",
+    "agent": "tsx src/index.ts --mode all --agent",
     "report": "tsx src/index.ts --dry-run --mode all --report",
     "report:macro": "tsx src/index.ts --dry-run --mode macro --report",
     "report:crypto": "tsx src/index.ts --dry-run --mode crypto --report",

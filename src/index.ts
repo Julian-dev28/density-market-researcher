@@ -18,6 +18,7 @@ import {
 } from "./transforms/toCryptoObjects.js";
 import { syncToFoundry } from "./foundry/client.js";
 import { generateReport } from "./report/generate.js";
+import { runAgent } from "./agent/loop.js";
 import type { PipelineRun } from "./types/index.js";
 
 program
@@ -30,9 +31,10 @@ program
   .option("--output-json", "Write transformed objects to ./output.json")
   .option("--mode <mode>", "Pipeline mode: macro | crypto | all", "macro")
   .option("--report", "Generate a markdown research report via Claude")
+  .option("--agent", "Run the autonomous Claude research agent (reads Foundry, investigates anomalies, writes research note)")
   .parse(process.argv);
 
-const opts = program.opts<{ dryRun: boolean; outputJson: boolean; mode: string; report: boolean }>();
+const opts = program.opts<{ dryRun: boolean; outputJson: boolean; mode: string; report: boolean; agent: boolean }>();
 
 if (opts.dryRun) {
   (config as Record<string, unknown>).DRY_RUN = true;
@@ -144,6 +146,18 @@ async function main(): Promise<void> {
   );
 
   run.totalSynced = indicatorsSynced + sectorsSynced;
+
+  // --- Agent ---
+  if (opts.agent) {
+    try {
+      const notePath = await runAgent(config);
+      if (notePath) {
+        console.log(chalk.green(`\n🤖  Agent research note → ${notePath}`));
+      }
+    } catch (err) {
+      console.error(chalk.red(`\n❌ Agent failed: ${err instanceof Error ? err.message : err}`));
+    }
+  }
 
   // --- Report ---
   if (opts.report) {
