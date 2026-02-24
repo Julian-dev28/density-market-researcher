@@ -31,14 +31,14 @@ const VERIFICATION_DOT: Record<string, string> = {
   CONFIRMED: "#4ade80",
   PARTIAL:   "#facc15",
   WRONG:     "#f87171",
-  PENDING:   "#6b7280",
+  PENDING:   "#3a3b3e",
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function CustomDot(props: any) {
   const { cx, cy, payload } = props;
-  const color = VERIFICATION_DOT[payload.verification ?? "PENDING"] ?? "#6b7280";
-  return <Dot cx={cx} cy={cy} r={5} fill={color} stroke="oklch(0.145 0 0)" strokeWidth={2} />;
+  const color = VERIFICATION_DOT[payload.verification ?? "PENDING"] ?? "#3a3b3e";
+  return <Dot cx={cx} cy={cy} r={4} fill={color} stroke="#080909" strokeWidth={2} />;
 }
 
 export function ConvictionChart({ data }: { data: DataPoint[] }) {
@@ -47,35 +47,45 @@ export function ConvictionChart({ data }: { data: DataPoint[] }) {
   return (
     <ResponsiveContainer width="100%" height={200}>
       <LineChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 8%)" vertical={false} />
+        <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.05)" vertical={false} />
         <XAxis
           dataKey="date"
-          tick={{ fill: "oklch(0.708 0 0)", fontSize: 10 }}
+          tick={{ fill: "#8a8a8a", fontSize: 9, fontFamily: "var(--font-mono)" }}
           axisLine={false}
           tickLine={false}
           interval="preserveStartEnd"
         />
         <YAxis
           domain={[0, 10]}
-          tick={{ fill: "oklch(0.708 0 0)", fontSize: 10 }}
+          tick={{ fill: "#8a8a8a", fontSize: 9, fontFamily: "var(--font-mono)" }}
           axisLine={false}
           tickLine={false}
           ticks={[2, 4, 6, 8, 10]}
         />
-        <ReferenceLine y={5} stroke="oklch(1 0 0 / 15%)" strokeDasharray="4 4" />
+        <ReferenceLine y={5} stroke="rgba(255,255,255,0.08)" strokeDasharray="4 4" />
         <Tooltip
           content={({ active, payload }) => {
             if (!active || !payload?.length) return null;
             const d = payload[0].payload as DataPoint;
-            const regimeColor = REGIME_COLOR[d.regime] ?? "#e5e7eb";
+            const regimeColor = REGIME_COLOR[d.regime] ?? "#f0ede6";
             return (
-              <div className="rounded-lg border border-border bg-popover px-3 py-2 text-xs shadow-md max-w-xs">
-                <p className="font-medium text-popover-foreground mb-1 line-clamp-2">{d.title}</p>
+              <div
+                style={{
+                  background: "#0e0f10",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  borderRadius: 0,
+                  padding: "8px 12px",
+                  fontSize: 11,
+                  fontFamily: "var(--font-mono)",
+                  maxWidth: 220,
+                }}
+              >
+                <p style={{ color: "#f0ede6", marginBottom: 4, lineHeight: 1.4, fontFamily: "var(--font-sans)" }} className="line-clamp-2">{d.title}</p>
                 <p style={{ color: regimeColor }}>{d.regime}</p>
-                <p className="text-muted-foreground">Conviction: {d.conviction}/10</p>
+                <p style={{ color: "#8a8a8a" }}>conviction {d.conviction}/10</p>
                 {d.verification && d.verification !== "PENDING" && (
                   <p style={{ color: VERIFICATION_DOT[d.verification] }}>
-                    Verified: {d.verification}
+                    {d.verification.toLowerCase()}
                   </p>
                 )}
               </div>
@@ -85,10 +95,10 @@ export function ConvictionChart({ data }: { data: DataPoint[] }) {
         <Line
           type="monotone"
           dataKey="conviction"
-          stroke="oklch(0.708 0 0)"
+          stroke="#718698"
           strokeWidth={1.5}
           dot={<CustomDot />}
-          activeDot={{ r: 6 }}
+          activeDot={{ r: 5, fill: "#718698", stroke: "#080909", strokeWidth: 2 }}
         />
       </LineChart>
     </ResponsiveContainer>

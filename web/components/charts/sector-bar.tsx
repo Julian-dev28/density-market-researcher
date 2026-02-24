@@ -23,17 +23,17 @@ interface DataPoint {
 
 export function SectorBarChart({ data }: { data: DataPoint[] }) {
   return (
-    <ResponsiveContainer width="100%" height={280}>
+    <ResponsiveContainer width="100%" height={240}>
       <BarChart data={data} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 8%)" vertical={false} />
+        <CartesianGrid strokeDasharray="2 4" stroke="rgba(255,255,255,0.05)" vertical={false} />
         <XAxis
           dataKey="name"
-          tick={{ fill: "oklch(0.708 0 0)", fontSize: 11 }}
+          tick={{ fill: "#8a8a8a", fontSize: 9, fontFamily: "var(--font-mono)" }}
           axisLine={false}
           tickLine={false}
         />
         <YAxis
-          tick={{ fill: "oklch(0.708 0 0)", fontSize: 11 }}
+          tick={{ fill: "#8a8a8a", fontSize: 9, fontFamily: "var(--font-mono)" }}
           axisLine={false}
           tickLine={false}
           tickFormatter={(v: number) => `${v > 0 ? "+" : ""}${v.toFixed(1)}%`}
@@ -43,22 +43,31 @@ export function SectorBarChart({ data }: { data: DataPoint[] }) {
             if (!active || !payload?.length) return null;
             const d = payload[0].payload as DataPoint;
             return (
-              <div className="rounded-lg border border-border bg-popover px-3 py-2 text-xs shadow-md">
-                <p className="font-medium text-popover-foreground">{d.fullName}</p>
-                <p className={`mt-1 ${d.dayChange > 0 ? "text-green-400" : d.dayChange < 0 ? "text-red-400" : "text-muted-foreground"}`}>
-                  Day: {d.dayChange > 0 ? "+" : ""}{d.dayChange.toFixed(2)}%
+              <div
+                style={{
+                  background: "#0e0f10",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  borderRadius: 0,
+                  padding: "8px 12px",
+                  fontSize: 11,
+                  fontFamily: "var(--font-mono)",
+                }}
+              >
+                <p style={{ color: "#f0ede6", marginBottom: 4, fontFamily: "var(--font-sans)" }}>{d.fullName}</p>
+                <p style={{ color: d.dayChange > 0 ? "#4ade80" : d.dayChange < 0 ? "#f87171" : "#8a8a8a" }}>
+                  {d.dayChange > 0 ? "+" : ""}{d.dayChange.toFixed(2)}%
                 </p>
               </div>
             );
           }}
         />
-        <ReferenceLine y={0} stroke="oklch(1 0 0 / 20%)" />
-        <Bar dataKey="dayChange" radius={[3, 3, 0, 0]}>
+        <ReferenceLine y={0} stroke="rgba(255,255,255,0.12)" />
+        <Bar dataKey="dayChange" radius={[2, 2, 0, 0]}>
           {data.map((entry, index) => (
             <Cell
               key={`cell-${index}`}
-              fill={entry.dayChange >= 0 ? "oklch(0.696 0.17 162.48)" : "oklch(0.704 0.191 22.216)"}
-              fillOpacity={0.85}
+              fill={entry.dayChange >= 0 ? "#4ade80" : "#f87171"}
+              fillOpacity={0.75}
             />
           ))}
         </Bar>
