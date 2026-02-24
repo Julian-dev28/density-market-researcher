@@ -190,6 +190,7 @@ export interface CMCGlobalMetrics {
         stablecoin_volume_24h: number;
         stablecoin_24h_percentage_change: number;
         total_market_cap_yesterday_percentage_change: number;
+        total_volume_24h_yesterday_percentage_change: number;
         last_updated: string;
       };
     };

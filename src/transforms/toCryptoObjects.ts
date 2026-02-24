@@ -57,6 +57,20 @@ function deriveCryptoSignal(
       if (value >= 65) return { signal: "BEARISH", rationale: `Greed zone (${value}) — caution, elevated positioning.` };
       return { signal: "NEUTRAL", rationale: `Neutral sentiment (${value}).` };
 
+    case "TOTAL_VOLUME_24H": {
+      const volB = value / 1e9;
+      if (rising === null) {
+        if (volB > 120) return { signal: "BULLISH", rationale: `High 24h volume ($${volB.toFixed(0)}B) — elevated market activity.` };
+        if (volB < 60)  return { signal: "BEARISH", rationale: `Low 24h volume ($${volB.toFixed(0)}B) — weak market participation.` };
+        return { signal: "NEUTRAL", rationale: `24h volume at $${volB.toFixed(0)}B — moderate activity.` };
+      }
+      const pct = pctChange(value, priorValue!);
+      if (rising && pct > 20) return { signal: "BULLISH", rationale: `24h volume surged +${pct.toFixed(1)}% vs yesterday ($${volB.toFixed(0)}B) — strong participation.` };
+      if (!rising && pct < -20) return { signal: "BEARISH", rationale: `24h volume collapsed ${pct.toFixed(1)}% vs yesterday ($${volB.toFixed(0)}B) — weak participation.` };
+      if (rising) return { signal: "BULLISH", rationale: `24h volume up ${pct.toFixed(1)}% vs yesterday ($${volB.toFixed(0)}B).` };
+      return { signal: "NEUTRAL", rationale: `24h volume down ${pct.toFixed(1)}% vs yesterday ($${volB.toFixed(0)}B).` };
+    }
+
     case "STABLECOIN_MARKET_CAP":
       if (rising === null) return { signal: "NEUTRAL", rationale: "Insufficient data." };
       if (rising) return { signal: "BULLISH", rationale: `Stablecoin supply growing — dry powder accumulating, bullish for deployment.` };
@@ -226,7 +240,9 @@ export function transformCryptoMetrics(bundle: CryptoFetchBundle): CryptoMetric[
     {
       metricId: "TOTAL_VOLUME_24H",
       value: usd.total_volume_24h,
-      prior: null,
+      prior: usd.total_volume_24h_yesterday_percentage_change != null
+        ? usd.total_volume_24h / (1 + usd.total_volume_24h_yesterday_percentage_change / 100)
+        : null,
       date: today,
     },
     {

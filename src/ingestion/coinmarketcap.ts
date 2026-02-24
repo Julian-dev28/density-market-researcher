@@ -33,6 +33,7 @@ const CMC_FIXTURE: CMCGlobalMetrics = {
         stablecoin_volume_24h: 70_000_000_000,
         stablecoin_24h_percentage_change: 0.5,
         total_market_cap_yesterday_percentage_change: -2.1,
+        total_volume_24h_yesterday_percentage_change: 5.3,
         last_updated: "2026-01-01T00:00:00Z",
       },
     },
