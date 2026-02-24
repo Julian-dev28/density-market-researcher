@@ -5,10 +5,4 @@ output.json
 *.js.map
 .DS_Store
 **/.DS_Store
-{src/
-
-# Next.js
-web/.next/
-web/.env.local
-web/tsconfig.tsbuildinfo
-
+reports/
