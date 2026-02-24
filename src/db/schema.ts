@@ -92,15 +92,36 @@ export const categorySnapshots = pgTable("category_snapshots", {
 // persistent memory that accumulates intelligence over time.
 // ------------------------------------------------------------
 export const agentFindings = pgTable("agent_findings", {
-  findingId:       text("finding_id").primaryKey(),          // UUID
-  runAt:           text("run_at").notNull(),                  // ISO timestamp
-  title:           text("title").notNull(),
-  macroRegime:     text("macro_regime").notNull(),            // EXPANSION | SLOWDOWN | CONTRACTION | RECOVERY
-  confidence:      text("confidence").notNull(),              // HIGH | MEDIUM | LOW
-  summary:         text("summary").notNull(),
-  keyFindings:     text("key_findings").notNull(),            // JSON: string[]
-  anomalies:       text("anomalies").notNull(),               // JSON: {indicator, observation, implication}[]
-  investmentIdeas: text("investment_ideas").notNull(),        // JSON: {ticker, direction, thesis, catalyst, keyRisk}[]
+  findingId:           text("finding_id").primaryKey(),          // UUID
+  runAt:               text("run_at").notNull(),                  // ISO timestamp
+  title:               text("title").notNull(),
+  macroRegime:         text("macro_regime").notNull(),            // EXPANSION | SLOWDOWN | CONTRACTION | RECOVERY
+  confidence:          text("confidence").notNull(),              // HIGH | MEDIUM | LOW
+  convictionScore:     doublePrecision("conviction_score"),       // 1-10: agent self-rated conviction
+  summary:             text("summary").notNull(),
+  keyFindings:         text("key_findings").notNull(),            // JSON: string[]
+  anomalies:           text("anomalies").notNull(),               // JSON: {indicator, observation, implication}[]
+  investmentIdeas:     text("investment_ideas").notNull(),        // JSON: {ticker, direction, thesis, catalyst, keyRisk}[]
+  verificationStatus:  text("verification_status").default("PENDING"), // PENDING | CONFIRMED | PARTIAL | WRONG
+  verifiedAt:          text("verified_at"),
+  priorCallAccuracy:   doublePrecision("prior_call_accuracy"),   // 0-1: how accurate this run's prior-call verifications were
+});
+
+// ------------------------------------------------------------
+// openhands_tasks
+// Written when the research agent identifies a capability gap
+// and tasks OpenHands to build a new data source or tool.
+// Each task = one OpenHands conversation.
+// ------------------------------------------------------------
+export const openhandsTasks = pgTable("openhands_tasks", {
+  taskId:                text("task_id").primaryKey(),          // UUID
+  requestedAt:           text("requested_at").notNull(),
+  triggeredByFindingId:  text("triggered_by_finding_id"),       // which finding motivated this
+  description:           text("description").notNull(),         // what the agent asked OpenHands to build
+  status:                text("status").notNull().default("RUNNING"), // RUNNING | COMPLETE | FAILED
+  conversationId:        text("conversation_id"),               // OpenHands conversation ID
+  result:                text("result"),                        // what was built
+  completedAt:           text("completed_at"),
 });
 
 // ------------------------------------------------------------

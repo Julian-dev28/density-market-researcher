@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { ConvictionChart } from "@/components/charts/conviction-chart";
 
 const SIGNAL_COLORS: Record<string, string> = {
   BULLISH: "text-green-400 bg-green-400/10",
@@ -22,7 +23,7 @@ const CONFIDENCE_COLORS: Record<string, string> = {
 export default async function DashboardPage() {
   const supabase = await createClient();
 
-  const [indicatorsRes, findingsRes] = await Promise.all([
+  const [indicatorsRes, findingsRes, allFindingsRes] = await Promise.all([
     supabase
       .from("macro_indicators")
       .select("*")
@@ -33,10 +34,22 @@ export default async function DashboardPage() {
       .select("*")
       .order("run_at", { ascending: false })
       .limit(1),
+    supabase
+      .from("agent_findings")
+      .select("finding_id,run_at,title,macro_regime,conviction_score,verification_status")
+      .order("run_at", { ascending: true })
+      .limit(30),
   ]);
 
   const indicators = indicatorsRes.data ?? [];
   const latestFinding = findingsRes.data?.[0] ?? null;
+  const convictionHistory = (allFindingsRes.data ?? []).map((f) => ({
+    date: new Date(f.run_at as string).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    conviction: (f.conviction_score as number) ?? 0,
+    regime: f.macro_regime as string,
+    title: f.title as string,
+    verification: f.verification_status as string | null,
+  }));
 
   const regime = latestFinding?.macro_regime ?? "—";
   const confidence = latestFinding?.confidence ?? null;
@@ -90,6 +103,19 @@ export default async function DashboardPage() {
             </span>
           </div>
           <p className="text-sm text-muted-foreground leading-relaxed">{latestFinding.summary}</p>
+        </div>
+      )}
+
+      {/* Conviction over time */}
+      {convictionHistory.length >= 2 && (
+        <div className="rounded-xl border border-border bg-card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Conviction Over Time</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Dot color = verification (green=confirmed, yellow=partial, red=wrong, grey=pending)</p>
+            </div>
+          </div>
+          <ConvictionChart data={convictionHistory} />
         </div>
       )}
 
