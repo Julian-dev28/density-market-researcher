@@ -5,7 +5,7 @@ import type {
   SectorSnapshot,
   CryptoMetric,
   CategorySnapshot,
-} from "@pipeline/types/index.js";
+} from "../../../lib/types";
 
 interface ReportRequestBody {
   indicators: MacroIndicator[];

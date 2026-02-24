@@ -1,4 +1,4 @@
-import type { SignalDirection } from "@pipeline/types/index.js";
+import type { SignalDirection } from "../lib/types";
 
 const STYLES: Record<SignalDirection, string> = {
   BULLISH: "bg-emerald-500/20 text-emerald-400",

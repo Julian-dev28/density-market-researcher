@@ -1,4 +1,4 @@
-import type { MacroIndicator } from "@pipeline/types/index.js";
+import type { MacroIndicator } from "../lib/types";
 import { SignalBadge } from "./SignalBadge";
 
 function fmtDelta(delta: number | null): string {

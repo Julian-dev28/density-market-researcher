@@ -1,4 +1,4 @@
-import type { SectorSnapshot } from "@pipeline/types/index.js";
+import type { SectorSnapshot } from "../lib/types";
 import { SignalBadge } from "./SignalBadge";
 
 function fmtPct(val: number | null): string {

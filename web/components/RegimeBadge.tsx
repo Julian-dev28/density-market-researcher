@@ -1,4 +1,4 @@
-import type { Regime, CryptoRegime } from "@pipeline/types/index.js";
+import type { Regime, CryptoRegime } from "../lib/types";
 
 type AnyRegime = Regime | CryptoRegime | null | undefined;
 

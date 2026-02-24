@@ -1,4 +1,4 @@
-import type { CryptoMetric, CategorySnapshot } from "@pipeline/types/index.js";
+import type { CryptoMetric, CategorySnapshot } from "../lib/types";
 import { SignalBadge } from "./SignalBadge";
 
 function fmtValue(m: CryptoMetric): string {
