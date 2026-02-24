@@ -19,28 +19,19 @@ export interface FearGreedResult {
 export async function fetchFearGreed(): Promise<FearGreedResult> {
   console.log("[FearGreed] Fetching Fear & Greed Index...");
 
-  try {
-    const response = await axios.get<FearGreedResponse>(
-      "https://api.alternative.me/fng/?limit=2",
-      { timeout: 10_000 }
-    );
+  const response = await axios.get<FearGreedResponse>(
+    "https://api.alternative.me/fng/?limit=2",
+    { timeout: 10_000 }
+  );
 
-    const data = response.data.data;
-    if (!data || data.length === 0) {
-      return getFixtureFearGreed();
-    }
-
-    const value = parseInt(data[0].value, 10);
-    const priorValue = data[1] ? parseInt(data[1].value, 10) : null;
-
-    console.log(`[FearGreed] ✓ Index: ${value} (${data[0].value_classification})`);
-    return { value, classification: data[0].value_classification, priorValue };
-  } catch {
-    console.warn("[FearGreed] Fetch failed — using fixture data.");
-    return getFixtureFearGreed();
+  const data = response.data.data;
+  if (!data || data.length === 0) {
+    throw new Error("[FearGreed] Empty response from alternative.me API.");
   }
-}
 
-export function getFixtureFearGreed(): FearGreedResult {
-  return { value: 44, classification: "Fear", priorValue: 38 };
+  const value = parseInt(data[0].value, 10);
+  const priorValue = data[1] ? parseInt(data[1].value, 10) : null;
+
+  console.log(`[FearGreed] ✓ Index: ${value} (${data[0].value_classification})`);
+  return { value, classification: data[0].value_classification, priorValue };
 }

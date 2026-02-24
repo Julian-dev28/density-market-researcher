@@ -16,8 +16,9 @@ const CMC_BASE = "https://pro-api.coinmarketcap.com";
 
 export async function fetchCMCGlobalMetrics(cfg: Config): Promise<CMCGlobalMetrics> {
   if (!cfg.COINMARKETCAP_API_KEY) {
-    console.log("[CMC] No API key — using fixture data.");
-    return getSampleGlobalMetrics();
+    throw new Error(
+      "COINMARKETCAP_API_KEY is not set. Get a free key at https://coinmarketcap.com/api/"
+    );
   }
 
   console.log("[CMC] Fetching global crypto metrics...");
@@ -32,42 +33,15 @@ export async function fetchCMCGlobalMetrics(cfg: Config): Promise<CMCGlobalMetri
     );
 
     if (response.data.status.error_code !== 0) {
-      console.warn("[CMC] API returned error — using fixture data.");
-      return getSampleGlobalMetrics();
+      throw new Error(`[CMC] API error code ${response.data.status.error_code}`);
     }
 
     console.log("[CMC] ✓ Global metrics fetched");
     return response.data;
   } catch (err) {
     if (axios.isAxiosError(err)) {
-      throw new Error(`[CMC] API request failed: ${err.response?.status} ${err.message}`);
+      throw new Error(`[CMC] Request failed: HTTP ${err.response?.status ?? "unknown"} — ${err.message}`);
     }
     throw err;
   }
-}
-
-export function getSampleGlobalMetrics(): CMCGlobalMetrics {
-  return {
-    status: { timestamp: new Date().toISOString(), error_code: 0 },
-    data: {
-      active_cryptocurrencies: 10_482,
-      btc_dominance: 58.3,
-      eth_dominance: 10.2,
-      quote: {
-        USD: {
-          total_market_cap: 2_840_000_000_000,
-          total_volume_24h: 94_000_000_000,
-          altcoin_market_cap: 1_185_000_000_000,
-          defi_market_cap: 96_500_000_000,
-          defi_volume_24h: 6_800_000_000,
-          defi_24h_percentage_change: -2.3,
-          stablecoin_market_cap: 228_000_000_000,
-          stablecoin_volume_24h: 71_000_000_000,
-          stablecoin_24h_percentage_change: 0.8,
-          total_market_cap_yesterday_percentage_change: -1.4,
-          last_updated: new Date().toISOString(),
-        },
-      },
-    },
-  };
 }
