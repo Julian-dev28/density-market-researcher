@@ -4,21 +4,21 @@ import { BracketCard } from "@/components/bracket-card";
 import { FadeIn } from "@/components/fade-in";
 
 const SIGNAL_COLORS: Record<string, string> = {
-  BULLISH: "text-green-400",
-  BEARISH: "text-red-400",
-  NEUTRAL: "text-yellow-400",
+  BULLISH: "text-[#3d6e4f]",
+  BEARISH: "text-[#b84455]",
+  NEUTRAL: "text-[#b07a2a]",
 };
 
 const REGIME_COLORS: Record<string, string> = {
-  EXPANSION:   "text-green-400 border-green-400/20",
-  RECOVERY:    "text-blue-400 border-blue-400/20",
-  SLOWDOWN:    "text-yellow-400 border-yellow-400/20",
-  CONTRACTION: "text-red-400 border-red-400/20",
+  EXPANSION:   "text-[#3d6e4f] border-[#3d6e4f]/20",
+  RECOVERY:    "text-[#3d6a9e] border-[#3d6a9e]/20",
+  SLOWDOWN:    "text-[#b07a2a] border-[#b07a2a]/20",
+  CONTRACTION: "text-[#b84455] border-[#b84455]/20",
 };
 
 const CONFIDENCE_COLORS: Record<string, string> = {
-  HIGH:   "text-green-400",
-  MEDIUM: "text-yellow-400",
+  HIGH:   "text-[#3d6e4f]",
+  MEDIUM: "text-[#b07a2a]",
   LOW:    "text-muted-foreground",
 };
 
