@@ -166,7 +166,7 @@ Total market cap, BTC dominance, ETH dominance, Fear & Greed Index, DeFi TVL, st
 ## Setup
 
 ```bash
-git clone https://github.com/julian-m-dev/foundry-macro-research
+git clone https://github.com/Julian-dev28/foundry-macro-research
 cd foundry-macro-research
 npm install
 ```
@@ -333,9 +333,12 @@ Six tables, all managed by Drizzle ORM:
 | `agent_findings` | Research notes with conviction scores, quality scores, and verification status |
 | `openhands_tasks` | Autonomous engineering tasks dispatched to OpenHands |
 
-The `agent_findings` table carries two quality columns added by migration `0003`:
+The `agent_findings` table carries all columns added across migrations `0000`–`0005`:
+- `conviction_score`, `verification_status`, `verified_at`, `prior_call_accuracy` — compound intelligence columns
 - `quality_score` — overall 1-10 float (average of four dimensions)
 - `quality_scores` — JSON text: `{ relevance, depth, temporalAccuracy, dataConsistency }`
+
+Migration `0005` also adds idempotent RLS policies so the dashboard (anon key) can read findings.
 
 ---
 
@@ -356,23 +359,32 @@ npm run typecheck # TypeScript type checking
 
 ---
 
+## Live dashboard
+
+**https://web-juliandev28s-projects.vercel.app/dashboard**
+
+Shows the current macro regime, conviction history chart, live indicators by category, latest research finding, sector performance, crypto metrics, and the full research feed with quality scores.
+
+---
+
 ## Example agent output
 
-Real run, 2026-02-24, `SLOWDOWN` regime, conviction `7/10`, quality `8.0/10`:
+Real run, 2026-02-24, `SLOWDOWN` regime, conviction `7/10`:
 
-> **Hard/Soft Data Divergence Widens as Yield Curve Hits 52-Week Lows**
+> **SLOWDOWN CONSOLIDATION: 2Y Bounced 3bp From Cycle Low While 10Y Made New Lows — Growth Scare > Rate Cut Pricing**
 >
-> Backward-looking hard data (GDP, IP, payrolls all at 100th percentile) remains robust,
-> but Consumer Sentiment has collapsed 29% over 22 months and the 10Y-2Y spread has
-> flattened 14bp in 3 weeks to its 52-week low. Core CPI at +0.295% MoM (~3.6% annualized)
-> constrains the Fed's room to ease.
+> The most analytically valuable finding: the DGS2 vs DGS10 decomposition reveals the curve
+> flattened 4bp since Feb 13, but 75% came from the 2Y RISING (rate cut expectations moderating)
+> and 25% from the 10Y falling (growth pessimism deepening). The growth scare has overtaken rate
+> cut pricing as the dominant force. 2Y at 3.43% is 21bp BELOW Fed Funds (3.64%) — the most
+> direct evidence of rate cut pricing in this cycle.
 >
-> Anomaly: XLF -7.65% YTD while HY spreads sit at 2.86% — credit markets complacent
-> relative to the equity signal in financials.
+> Anomaly: HY ascending triangle (2.86–2.97) enters Day 6 of 5–10 day resolution window.
+> Break above 2.97 = CONTRACTION transition signal. Break below 2.86 = credit stress fades.
 >
-> Ideas: LONG XLP, LONG XLRE, SHORT XLF, SHORT HYG
+> 3 critical tests: HY triangle resolution, mortgage rate 6.00% break (~Feb 26), 10Y double-bottom at 4.03%.
 >
-> Quality: relevance=8 · depth=7 · temporal=9 · consistency=8 · overall=8.0/10
+> Ideas: LONG TLT · LONG XLP · LONG XLRE · SHORT XLF
 
 ---
 
