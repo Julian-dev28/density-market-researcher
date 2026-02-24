@@ -137,47 +137,15 @@ async function main(): Promise<void> {
   // --- Sync ---
   console.log(chalk.bold("\n📡  Syncing to Foundry Ontology...\n"));
 
-  const { indicatorsSynced, sectorsSynced } = await syncToFoundry(
+  const { indicatorsSynced, sectorsSynced, cryptoSynced, categoriesSynced } = await syncToFoundry(
     indicators,
     sectorSnapshots,
+    cryptoMetrics,
+    categorySnapshots,
     config
   );
 
-  // Print crypto dry-run output
-  if (config.DRY_RUN && runCrypto && cryptoMetrics.length > 0) {
-    const { inferCryptoRegime } = await import("./transforms/toCryptoObjects.js");
-    console.log(chalk.yellow(`\n[DRY RUN] Would write ${cryptoMetrics.length} CryptoMetric + ${categorySnapshots.length} CategorySnapshot objects to Foundry\n`));
-
-    console.log(chalk.bold("  CRYPTO METRICS"));
-    console.log(chalk.dim(`  ${"Metric ID".padEnd(22)}  ${"Value".padEnd(22)}  ${"Delta".padEnd(16)}  Signal`));
-    console.log(chalk.dim(`  ${"-".repeat(80)}`));
-    for (const m of cryptoMetrics) {
-      const signalColor = m.signal === "BULLISH" ? chalk.green : m.signal === "BEARISH" ? chalk.red : chalk.yellow;
-      const val = m.unit === "USD"
-        ? `$${(m.latestValue / 1e9).toFixed(2)}B`
-        : `${m.latestValue.toFixed(2)}${m.unit === "%" ? "%" : ""}`;
-      const delta = m.periodDeltaPct !== null ? `${m.periodDeltaPct > 0 ? "+" : ""}${m.periodDeltaPct.toFixed(2)}%` : "n/a";
-      console.log(
-        `    ${chalk.cyan(m.metricId.padEnd(22))}  ${chalk.white(val.padEnd(22))}  ${chalk.dim(delta.padEnd(16))}  ${signalColor(m.signal)}`
-      );
-    }
-
-    const regime = inferCryptoRegime(cryptoMetrics);
-    const regimeColor = regime === "BULL_MARKET" ? chalk.green : regime === "ALT_SEASON" ? chalk.cyan : regime === "RISK_OFF" ? chalk.yellow : chalk.red;
-    console.log(chalk.bold(`\n  CATEGORY SNAPSHOTS`));
-    console.log(chalk.dim(`  ${"Category".padEnd(24)}  ${"Market Cap".padEnd(14)}  ${"Dom %".padEnd(8)}  Signal`));
-    console.log(chalk.dim(`  ${"-".repeat(65)}`));
-    for (const c of categorySnapshots) {
-      const signalColor = c.categorySignal === "BULLISH" ? chalk.green : c.categorySignal === "BEARISH" ? chalk.red : chalk.yellow;
-      const mc = c.totalMarketCapUsd ? `$${(c.totalMarketCapUsd / 1e9).toFixed(0)}B` : "n/a";
-      console.log(
-        `    ${chalk.cyan(c.categoryName.padEnd(24))}  ${chalk.white(mc.padEnd(14))}  ${chalk.dim(`${c.dominancePct?.toFixed(1)}%`.padEnd(8))}  ${signalColor(c.categorySignal)}`
-      );
-    }
-    console.log(chalk.bold(`\n  Inferred Crypto Regime: ${regimeColor(regime)}`));
-  }
-
-  run.totalSynced = indicatorsSynced + sectorsSynced;
+  run.totalSynced = indicatorsSynced + sectorsSynced + cryptoSynced + categoriesSynced;
 
   // --- Report ---
   if (opts.report) {

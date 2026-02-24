@@ -24,6 +24,7 @@ import type {
   CryptoMetricCategory,
   PipelineOutput,
 } from "./types";
+import { isFoundryConfigured, getFoundryData } from "./foundry";
 
 export type { PipelineOutput };
 
@@ -557,6 +558,14 @@ function transformCryptoCategories(metrics: CryptoMetric[], cmc: CMC): CategoryS
 // ---------------------------------------------------------------------------
 
 export async function runPipeline(): Promise<PipelineOutput> {
+  // ── Try Foundry first ───────────────────────────────────────────────────
+  // When FOUNDRY_URL + FOUNDRY_TOKEN are configured, read live objects from
+  // the Palantir Foundry Ontology (populated by the CLI pipeline).
+  if (isFoundryConfigured()) {
+    const foundryData = await getFoundryData();
+    if (foundryData) return foundryData;
+  }
+
   const fredKey = process.env.FRED_API_KEY;
   const cmcKey = process.env.COINMARKETCAP_API_KEY;
 
@@ -581,5 +590,13 @@ export async function runPipeline(): Promise<PipelineOutput> {
   const cryptoMetrics = transformCryptoMetrics(cmcData, tvlData.currentTvl, tvlData.priorTvl, fgData.value, fgData.priorValue);
   const categories = transformCryptoCategories(cryptoMetrics, cmcData);
 
-  return { indicators, sectors, cryptoMetrics, categories, generatedAt: new Date().toISOString() };
+  const hasLiveKeys = !!(fredKey || cmcKey);
+  return {
+    indicators,
+    sectors,
+    cryptoMetrics,
+    categories,
+    generatedAt: new Date().toISOString(),
+    dataSource: hasLiveKeys ? "LIVE" : "FIXTURE",
+  };
 }

@@ -32,9 +32,9 @@ export default async function Dashboard() {
 
   const macroRegime = data.sectors[0]?.macroRegime ?? null;
   const cryptoRegime = data.categories[0]?.cryptoRegime ?? null;
-  const liveData = !!(
-    process.env.FRED_API_KEY || process.env.COINMARKETCAP_API_KEY
-  );
+  const dataSource = data.dataSource ?? "FIXTURE";
+  const isFoundry = dataSource === "FOUNDRY";
+  const isLive    = dataSource === "LIVE";
 
   const updatedAt = new Date(data.generatedAt).toLocaleString("en-US", {
     month: "short",
@@ -76,17 +76,19 @@ export default async function Dashboard() {
                 <RegimeBadge regime={cryptoRegime} />
               </div>
 
-              {/* Live / fixture indicator */}
+              {/* Data source indicator */}
               <div className="flex items-center gap-1.5 border-l border-zinc-800/60 pl-5">
                 <span
                   className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                    liveData
-                      ? "bg-green-400 shadow-[0_0_4px_1px_rgba(74,222,128,0.5)]"
-                      : "bg-amber-500"
+                    isFoundry
+                      ? "bg-indigo-400 shadow-[0_0_4px_1px_rgba(129,140,248,0.5)]"
+                      : isLive
+                        ? "bg-green-400 shadow-[0_0_4px_1px_rgba(74,222,128,0.5)]"
+                        : "bg-amber-500"
                   }`}
                 />
                 <span className="text-[9px] font-mono text-zinc-600 whitespace-nowrap">
-                  {liveData ? "LIVE" : "FIXTURE"} · {updatedAt}
+                  {isFoundry ? "FOUNDRY" : isLive ? "LIVE" : "FIXTURE"} · {updatedAt}
                 </span>
               </div>
             </div>
@@ -101,7 +103,9 @@ export default async function Dashboard() {
         <section>
           <SectionLabel
             title="Macro Indicators"
-            meta={`${data.indicators.length} series · SRC: FRED`}
+            meta={isFoundry
+              ? `${data.indicators.length} series · SRC: PALANTIR FOUNDRY`
+              : `${data.indicators.length} series · SRC: FRED`}
           />
           <MacroTable indicators={data.indicators} />
         </section>
@@ -111,14 +115,18 @@ export default async function Dashboard() {
           <section>
             <SectionLabel
               title="Sector Performance"
-              meta={`${data.sectors.length} ETFs · SRC: Yahoo Finance`}
+              meta={isFoundry
+                ? `${data.sectors.length} ETFs · SRC: PALANTIR FOUNDRY`
+                : `${data.sectors.length} ETFs · SRC: Yahoo Finance`}
             />
             <SectorGrid sectors={data.sectors} />
           </section>
           <section>
             <SectionLabel
               title="Crypto Markets"
-              meta="SRC: CoinMarketCap · DeFiLlama · Alternative.me"
+              meta={isFoundry
+                ? "SRC: PALANTIR FOUNDRY"
+                : "SRC: CoinMarketCap · DeFiLlama · Alternative.me"}
             />
             <CryptoPanel
               metrics={data.cryptoMetrics}

@@ -104,4 +104,6 @@ export interface PipelineOutput {
   cryptoMetrics: CryptoMetric[];
   categories: CategorySnapshot[];
   generatedAt: string;
+  /** Where the data came from — set by runPipeline() */
+  dataSource?: "FOUNDRY" | "LIVE" | "FIXTURE";
 }
