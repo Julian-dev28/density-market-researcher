@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+output.json
+*.js.map
+
+# Next.js
+web/.next/
+web/.env.local
+web/tsconfig.tsbuildinfo
+
