@@ -5,6 +5,7 @@ import { randomUUID } from "crypto";
 import { desc, eq, sql } from "drizzle-orm";
 import type { Config } from "../config.js";
 import { getDb } from "../db/client.js";
+import { scoreResearchNote } from "./scorer.js";
 import {
   macroIndicators,
   sectorSnapshots,
@@ -469,6 +470,9 @@ export async function execWriteResearchNote(input: ResearchNote, cfg: Config): P
 
   writeFileSync(mdPath, md);
 
+  // Score quality regardless of DB — non-blocking, failure returns null
+  const quality = await scoreResearchNote(note);
+
   if (cfg.DATABASE_URL) {
     const db = getDb(cfg.DATABASE_URL);
 
@@ -486,6 +490,8 @@ export async function execWriteResearchNote(input: ResearchNote, cfg: Config): P
       anomalies:       JSON.stringify(note.anomalies),
       investmentIdeas: JSON.stringify(note.investmentIdeas),
       verificationStatus: "PENDING",
+      qualityScore:    quality?.overall ?? null,
+      qualityScores:   quality ? JSON.stringify(quality) : null,
     });
 
     // Write verification verdicts on prior findings
@@ -512,5 +518,8 @@ export async function execWriteResearchNote(input: ResearchNote, cfg: Config): P
     }
   }
 
-  return `Research note saved → ${mdPath} (persisted to agent_findings with conviction=${note.convictionScore}/10)`;
+  const qualityMsg = quality
+    ? ` | quality=${quality.overall}/10 (relevance=${quality.relevance}, depth=${quality.depth}, temporal=${quality.temporalAccuracy}, consistency=${quality.dataConsistency})`
+    : "";
+  return `Research note saved → ${mdPath} (persisted to agent_findings with conviction=${note.convictionScore}/10${qualityMsg})`;
 }

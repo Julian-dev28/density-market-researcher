@@ -33,6 +33,9 @@ type Finding = {
   title: string;
   macro_regime: string;
   confidence: string;
+  conviction_score: number | null;
+  quality_score: number | null;
+  quality_scores: string | null;
   summary: string;
   key_findings: string;
   anomalies: string;
@@ -90,7 +93,7 @@ export default async function ResearchPage() {
                       })}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                     <span
                       className={`inline-flex px-2.5 py-1 rounded-full border text-xs font-medium ${REGIME_COLORS[f.macro_regime] ?? "bg-muted text-muted-foreground border-border"}`}
                     >
@@ -99,6 +102,14 @@ export default async function ResearchPage() {
                     <span className={`text-xs font-medium ${CONFIDENCE_COLORS[f.confidence] ?? "text-muted-foreground"}`}>
                       {f.confidence}
                     </span>
+                    {f.conviction_score != null && (
+                      <span className="text-xs text-muted-foreground">
+                        conviction <span className="text-foreground font-medium">{f.conviction_score}/10</span>
+                      </span>
+                    )}
+                    {f.quality_score != null && (
+                      <QualityBadge score={f.quality_score} scores={safeParseJson(f.quality_scores ?? "", null)} />
+                    )}
                   </div>
                 </div>
 
@@ -197,4 +208,32 @@ function safeParseJson<T>(json: string, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+type QualityScores = {
+  relevance: number;
+  depth: number;
+  temporalAccuracy: number;
+  dataConsistency: number;
+};
+
+function QualityBadge({ score, scores }: { score: number; scores: QualityScores | null }) {
+  const color =
+    score >= 8 ? "text-green-400 bg-green-400/10" :
+    score >= 6 ? "text-yellow-400 bg-yellow-400/10" :
+                 "text-red-400 bg-red-400/10";
+
+  const tooltip = scores
+    ? `Relevance ${scores.relevance} · Depth ${scores.depth} · Temporal ${scores.temporalAccuracy} · Consistency ${scores.dataConsistency}`
+    : undefined;
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${color}`}
+      title={tooltip}
+    >
+      <span className="opacity-60 text-[10px]">Q</span>
+      {score.toFixed(1)}/10
+    </span>
+  );
 }

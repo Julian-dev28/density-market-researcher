@@ -1,13 +1,13 @@
 // ============================================================
-// Domain types — map directly to Foundry Object Types
+// Domain types — core research ontology
 //
-// Three linked Object Types form the core research ontology:
+// Three linked entities form the macro research model:
 //
 //   MacroIndicator ──► SectorSnapshot ──► WatchlistCompany
 //
-// This graph structure is what makes Foundry powerful for
-// research: analysts can traverse from a Fed rate decision
-// all the way to affected companies in a single query.
+// MacroIndicators (FRED series) drive sector signal derivation.
+// SectorSnapshots are point-in-time ETF performance snapshots.
+// All objects sync to Postgres via Drizzle ORM.
 // ============================================================
 
 export type IndicatorCategory =

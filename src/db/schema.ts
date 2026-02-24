@@ -105,6 +105,9 @@ export const agentFindings = pgTable("agent_findings", {
   verificationStatus:  text("verification_status").default("PENDING"), // PENDING | CONFIRMED | PARTIAL | WRONG
   verifiedAt:          text("verified_at"),
   priorCallAccuracy:   doublePrecision("prior_call_accuracy"),   // 0-1: how accurate this run's prior-call verifications were
+  // CryptoAnalystBench-style quality scoring (Claude Haiku judge)
+  qualityScore:        doublePrecision("quality_score"),         // 1-10 overall (avg of 4 dimensions)
+  qualityScores:       text("quality_scores"),                   // JSON: {relevance, depth, temporalAccuracy, dataConsistency}
 });
 
 // ------------------------------------------------------------

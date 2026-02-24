@@ -1,9 +1,28 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import {
+  isPaymentEnabled,
+  getPaymentRequirements,
+  build402Response,
+  verifyPaymentHeader,
+  buildPaymentResponse,
+} from "@/lib/x402";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const format = searchParams.get("format");
+
+  // x402 payment gate — only enforced when PAYMENT_ENABLED=true
+  if (isPaymentEnabled()) {
+    const requirements = getPaymentRequirements(request.url);
+    const xPayment = (request as Request & { headers: Headers }).headers.get("x-payment");
+    const { valid, error } = verifyPaymentHeader(xPayment, requirements);
+    if (!valid) {
+      console.log(`[x402] Payment required — ${error ?? "no payment"}`);
+      return build402Response(requirements);
+    }
+    console.log("[x402] Payment verified — serving feed");
+  }
 
   const supabase = await createClient();
   const { data } = await supabase
@@ -20,6 +39,8 @@ export async function GET(request: Request) {
       headers: { "Content-Type": "application/rss+xml; charset=utf-8" },
     });
   }
+
+  const paymentResponseHeaders = isPaymentEnabled() ? buildPaymentResponse() : {};
 
   return NextResponse.json(
     {
@@ -46,6 +67,7 @@ export async function GET(request: Request) {
       headers: {
         "Cache-Control": "public, max-age=300, stale-while-revalidate=600",
         "Access-Control-Allow-Origin": "*",
+        ...paymentResponseHeaders,
       },
     },
   );

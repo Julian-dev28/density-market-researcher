@@ -15,7 +15,12 @@ export function RunButton({ label, endpoint, durationMs = 120_000, doneLabel = "
   async function handleClick() {
     if (status === "running") return;
     setStatus("running");
-    await fetch(endpoint, { method: "POST" });
+    try {
+      await fetch(endpoint, { method: "POST" });
+    } catch {
+      setStatus("idle");
+      return;
+    }
     setTimeout(() => setStatus("done"), durationMs);
   }
 

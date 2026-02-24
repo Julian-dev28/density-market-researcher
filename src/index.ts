@@ -24,7 +24,7 @@ import type { PipelineRun } from "./types/index.js";
 program
   .name("foundry-macro-research")
   .description(
-    "Macro + crypto research pipeline for Palantir Foundry"
+    "Macro + crypto research pipeline — syncs to Postgres, runs Claude research agent"
   )
   .version("1.0.0")
   .option("--dry-run", "Print transformed objects without writing to Foundry")
@@ -57,7 +57,7 @@ async function main(): Promise<void> {
     errors: [],
   };
 
-  console.log(chalk.bold("\n📈  Foundry Macro Research Pipeline"));
+  console.log(chalk.bold("\n📈  Macro Research Pipeline"));
   console.log(chalk.dim(`Run ID: ${runId}`));
   console.log(chalk.dim(`Mode:   ${config.DRY_RUN ? "DRY RUN" : "LIVE"} | Pipeline: ${config.MODE.toUpperCase()}\n`));
 
@@ -199,7 +199,7 @@ async function main(): Promise<void> {
   if (config.DRY_RUN) {
     console.log(
       chalk.yellow(
-        "\n  ⚡ Dry-run complete. Set DRY_RUN=false and add Foundry credentials to sync live.\n"
+        "\n  ⚡ Dry-run complete. Set DATABASE_URL in .env to sync live.\n"
       )
     );
   } else {

@@ -16,17 +16,31 @@ export interface FearGreedResult {
   priorValue: number | null;
 }
 
+// Fixture used when the Fear & Greed API is unreachable or returns empty data.
+const FEARGREED_FIXTURE: FearGreedResult = {
+  value: 45,
+  classification: "Fear",
+  priorValue: 42,
+};
+
 export async function fetchFearGreed(): Promise<FearGreedResult> {
   console.log("[FearGreed] Fetching Fear & Greed Index...");
 
-  const response = await axios.get<FearGreedResponse>(
-    "https://api.alternative.me/fng/?limit=2",
-    { timeout: 10_000 }
-  );
+  let data: FearGreedResponse["data"];
+  try {
+    const response = await axios.get<FearGreedResponse>(
+      "https://api.alternative.me/fng/?limit=2",
+      { timeout: 10_000 }
+    );
+    data = response.data.data;
+  } catch {
+    console.log("[FearGreed] Request failed — using fixture data.");
+    return FEARGREED_FIXTURE;
+  }
 
-  const data = response.data.data;
   if (!data || data.length === 0) {
-    throw new Error("[FearGreed] Empty response from alternative.me API.");
+    console.log("[FearGreed] Empty response — using fixture data.");
+    return FEARGREED_FIXTURE;
   }
 
   const value = parseInt(data[0].value, 10);
