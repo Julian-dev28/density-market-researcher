@@ -25,7 +25,10 @@
     "test:watch": "vitest",
     "test:unit": "vitest run src/tests/unit",
     "test:e2e": "vitest run src/tests/e2e",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
   },
   "keywords": [
     "palantir",
@@ -51,15 +54,14 @@
     "chalk": "^4.1.2",
     "commander": "^12.1.0",
     "dotenv": "^16.4.5",
+    "drizzle-orm": "^0.45.1",
+    "postgres": "^3.4.8",
     "zod": "^3.23.8"
-  },
-  "optionalDependencies": {
-    "@osdk/client": "^1.8.0",
-    "@osdk/oauth": "^1.8.0"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
     "@vitest/coverage-v8": "^4.0.18",
+    "drizzle-kit": "^0.31.9",
     "tsx": "^4.7.0",
     "typescript": "^5.4.5",
     "vitest": "^4.0.18"

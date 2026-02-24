@@ -4,10 +4,8 @@ import { z } from "zod";
 dotenv.config();
 
 const ConfigSchema = z.object({
-  FOUNDRY_URL: z.string().url().optional(),
-  FOUNDRY_CLIENT_ID: z.string().optional(),
-  FOUNDRY_CLIENT_SECRET: z.string().optional(),
-  FOUNDRY_TOKEN: z.string().optional(),
+  /** Postgres connection string — required when DRY_RUN=false */
+  DATABASE_URL: z.string().optional(),
 
   /** FRED API key — free at https://fred.stlouisfed.org/docs/api/api_key.html */
   FRED_API_KEY: z.string().optional(),
@@ -38,13 +36,11 @@ function loadConfig(): Config {
 
 export const config = loadConfig();
 
-export function assertFoundryConfig(cfg: Config): void {
+export function assertDbConfig(cfg: Config): void {
   if (cfg.DRY_RUN) return;
-  const hasToken = !!cfg.FOUNDRY_TOKEN;
-  const hasOAuth = !!cfg.FOUNDRY_CLIENT_ID && !!cfg.FOUNDRY_CLIENT_SECRET;
-  if (!cfg.FOUNDRY_URL) throw new Error("FOUNDRY_URL is required in live mode.");
-  if (!hasToken && !hasOAuth)
+  if (!cfg.DATABASE_URL) {
     throw new Error(
-      "Set FOUNDRY_TOKEN or (FOUNDRY_CLIENT_ID + FOUNDRY_CLIENT_SECRET) in .env"
+      "DATABASE_URL is required in live mode (e.g. postgres://user:pass@localhost:5432/macro_research)."
     );
+  }
 }

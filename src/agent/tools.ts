@@ -1,9 +1,17 @@
 import Anthropic from "@anthropic-ai/sdk";
 import axios from "axios";
 import { writeFileSync, mkdirSync } from "fs";
+import { randomUUID } from "crypto";
+import { desc } from "drizzle-orm";
 import type { Config } from "../config.js";
-
-const ONTOLOGY = "ontology-e6a83f07-70c3-4ec1-b7ce-b106a895b7ce";
+import { getDb } from "../db/client.js";
+import {
+  macroIndicators,
+  sectorSnapshots,
+  cryptoMetrics as cryptoMetricsTable,
+  categorySnapshots as categorySnapshotsTable,
+  agentFindings,
+} from "../db/schema.js";
 
 // ---------------------------------------------------------------------------
 // Tool schemas — passed to Claude
@@ -11,9 +19,29 @@ const ONTOLOGY = "ontology-e6a83f07-70c3-4ec1-b7ce-b106a895b7ce";
 
 export const AGENT_TOOLS: Anthropic.Tool[] = [
   {
+    name: "read_prior_findings",
+    description:
+      "Read conclusions from previous agent runs stored in the database. " +
+      "ALWAYS call this first before reading live data. " +
+      "Returns the last N research notes written by prior agent runs — each includes the macro regime call, " +
+      "confidence level, key findings, anomalies flagged, and investment ideas proposed. " +
+      "Use this to understand what has already been observed, what anomalies have persisted across runs, " +
+      "and whether the current regime call confirms or contradicts prior conclusions.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        limit: {
+          type: "number",
+          description: "Number of recent findings to read (default: 5, max: 20)",
+        },
+      },
+      required: [],
+    },
+  },
+  {
     name: "read_foundry_objects",
     description:
-      "Read live objects from the Palantir Foundry Ontology. " +
+      "Read live objects from the Postgres database. " +
       "Use 'Density' to get all macro indicator snapshots (GDP, CPI, unemployment, rates, yield curve, housing, sentiment, etc.) " +
       "with 52-week percentile rankings, period deltas, and BULLISH/BEARISH/NEUTRAL signals. " +
       "Use 'SectorSnapshot' to get all sector ETF performance (XLK, XLE, XLF, XLP, XLI, XLB, XLRE, XLU, XLV, XLY, SPY) " +
@@ -28,7 +56,7 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
         objectType: {
           type: "string",
           enum: ["Density", "SectorSnapshot", "CryptoMetric", "CategorySnapshot"],
-          description: "The Foundry object type to read",
+          description: "The object type to read",
         },
       },
       required: ["objectType"],
@@ -61,8 +89,10 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
   {
     name: "write_research_note",
     description:
-      "Save your completed research note to disk. Call this ONCE at the end of your analysis " +
-      "after reading all necessary data and forming conclusions. Be specific — use exact numbers.",
+      "Save your completed research note to disk AND persist it to the database as a finding. " +
+      "Call this ONCE at the end of your analysis after reading prior findings and all live data. " +
+      "This note becomes part of the world model — future agent runs will read it as context. " +
+      "Be specific — use exact numbers. Explicitly note whether anomalies from prior runs have resolved or persisted.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -82,7 +112,7 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
         keyFindings: {
           type: "array",
           items: { type: "string" },
-          description: "4-6 specific, data-driven findings with exact numbers from the Foundry data",
+          description: "4-6 specific, data-driven findings with exact numbers from the data",
         },
         anomalies: {
           type: "array",
@@ -134,25 +164,73 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
 // Tool execution functions
 // ---------------------------------------------------------------------------
 
+export async function execReadPriorFindings(
+  limit: number,
+  cfg: Config,
+): Promise<string> {
+  if (!cfg.DATABASE_URL) {
+    return "No DATABASE_URL configured — no prior findings available. This is the first run.";
+  }
+  const db = getDb(cfg.DATABASE_URL);
+  const rows = await db
+    .select()
+    .from(agentFindings)
+    .orderBy(desc(agentFindings.runAt))
+    .limit(Math.min(Math.max(limit, 1), 20));
+
+  if (rows.length === 0) {
+    return "No prior findings in the database. This is the first agent run — establish a baseline.";
+  }
+
+  const parsed = rows.map((r) => ({
+    ...r,
+    keyFindings:     JSON.parse(r.keyFindings),
+    anomalies:       JSON.parse(r.anomalies),
+    investmentIdeas: JSON.parse(r.investmentIdeas),
+  }));
+
+  return JSON.stringify(parsed, null, 2);
+}
+
 export async function execReadFoundryObjects(
   objectType: string,
   cfg: Config,
 ): Promise<string> {
-  const url = `${cfg.FOUNDRY_URL}/api/v2/ontologies/${ONTOLOGY}/objects/${objectType}?pageSize=500`;
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${cfg.FOUNDRY_TOKEN}` },
-  });
-  if (!res.ok) {
-    return `Error reading ${objectType} from Foundry: HTTP ${res.status}`;
+  if (!cfg.DATABASE_URL) {
+    return `No DATABASE_URL configured — cannot read ${objectType}.`;
   }
-  const data = (await res.json()) as { data?: Record<string, unknown>[] };
-  const objects = data.data ?? [];
-  // Strip internal Foundry metadata to reduce token count
-  const cleaned = objects.map((o) => {
-    const { __rid, __apiName, ...rest } = o as Record<string, unknown>;
-    void __rid; void __apiName;
-    return rest;
+  const db = getDb(cfg.DATABASE_URL);
+
+  let rows: unknown[];
+  switch (objectType) {
+    case "Density":
+      rows = await db.select().from(macroIndicators);
+      break;
+    case "SectorSnapshot":
+      rows = await db.select().from(sectorSnapshots);
+      break;
+    case "CryptoMetric":
+      rows = await db.select().from(cryptoMetricsTable);
+      break;
+    case "CategorySnapshot":
+      rows = await db.select().from(categorySnapshotsTable);
+      break;
+    default:
+      return `Unknown objectType: ${objectType}`;
+  }
+
+  // Parse stored JSON strings back into arrays
+  const cleaned = rows.map((r) => {
+    const row = { ...(r as Record<string, unknown>) };
+    if (typeof row.primaryMacroDrivers === "string") {
+      try { row.primaryMacroDrivers = JSON.parse(row.primaryMacroDrivers); } catch { /* leave as string */ }
+    }
+    if (typeof row.primaryMetricDrivers === "string") {
+      try { row.primaryMetricDrivers = JSON.parse(row.primaryMetricDrivers); } catch { /* leave as string */ }
+    }
+    return row;
   });
+
   return JSON.stringify(cleaned, null, 2);
 }
 
@@ -162,7 +240,7 @@ export async function execFetchFredSeries(
   cfg: Config,
 ): Promise<string> {
   if (!cfg.FRED_API_KEY) {
-    return `No FRED_API_KEY configured — cannot fetch ${seriesId}. Analysis limited to Foundry snapshot data.`;
+    return `No FRED_API_KEY configured — cannot fetch ${seriesId}. Analysis limited to database snapshot data.`;
   }
   try {
     const res = await axios.get(
@@ -209,7 +287,10 @@ export interface ResearchNote {
   generatedAt?: string;
 }
 
-export function execWriteResearchNote(input: ResearchNote): string {
+export async function execWriteResearchNote(
+  input: ResearchNote,
+  cfg: Config,
+): Promise<string> {
   const note: ResearchNote = { ...input, generatedAt: new Date().toISOString() };
   mkdirSync("reports", { recursive: true });
 
@@ -250,5 +331,22 @@ export function execWriteResearchNote(input: ResearchNote): string {
   ].join("\n");
 
   writeFileSync(mdPath, md);
-  return `Research note saved → ${mdPath} (JSON: ${jsonPath})`;
+
+  // Persist finding to DB so future runs can read it as prior context
+  if (cfg.DATABASE_URL) {
+    const db = getDb(cfg.DATABASE_URL);
+    await db.insert(agentFindings).values({
+      findingId:       randomUUID(),
+      runAt:           note.generatedAt!,
+      title:           note.title,
+      macroRegime:     note.macroRegime,
+      confidence:      note.confidence,
+      summary:         note.summary,
+      keyFindings:     JSON.stringify(note.keyFindings),
+      anomalies:       JSON.stringify(note.anomalies),
+      investmentIdeas: JSON.stringify(note.investmentIdeas),
+    });
+  }
+
+  return `Research note saved → ${mdPath} (JSON: ${jsonPath}, persisted to agent_findings)`;
 }

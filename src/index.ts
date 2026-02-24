@@ -2,7 +2,7 @@
 import { program } from "commander";
 import chalk from "chalk";
 import { randomUUID } from "crypto";
-import { config, assertFoundryConfig } from "./config.js";
+import { config, assertDbConfig } from "./config.js";
 import { fetchFREDIndicators } from "./ingestion/fred.js";
 import { fetchSectorPerformance } from "./ingestion/sectors.js";
 import { fetchCMCGlobalMetrics } from "./ingestion/coinmarketcap.js";
@@ -16,7 +16,7 @@ import {
   transformCryptoMetrics,
   transformCryptoCategories,
 } from "./transforms/toCryptoObjects.js";
-import { syncToFoundry } from "./foundry/client.js";
+import { syncToDb } from "./db/sync.js";
 import { generateReport } from "./report/generate.js";
 import { runAgent } from "./agent/loop.js";
 import type { PipelineRun } from "./types/index.js";
@@ -63,7 +63,7 @@ async function main(): Promise<void> {
 
   if (!config.DRY_RUN) {
     try {
-      assertFoundryConfig(config);
+      assertDbConfig(config);
     } catch (err) {
       console.error(chalk.red(`\n❌ Config error: ${err instanceof Error ? err.message : err}`));
       console.log(chalk.dim("\nTip: Run with --dry-run to test without credentials.\n"));
@@ -137,9 +137,9 @@ async function main(): Promise<void> {
   }
 
   // --- Sync ---
-  console.log(chalk.bold("\n📡  Syncing to Foundry Ontology...\n"));
+  console.log(chalk.bold("\n📡  Syncing to Postgres...\n"));
 
-  const { indicatorsSynced, sectorsSynced, cryptoSynced, categoriesSynced } = await syncToFoundry(
+  const { indicatorsSynced, sectorsSynced, cryptoSynced, categoriesSynced } = await syncToDb(
     indicators,
     sectorSnapshots,
     cryptoMetrics,

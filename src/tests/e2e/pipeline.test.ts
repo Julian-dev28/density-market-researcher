@@ -17,10 +17,7 @@ const testConfig: Config = {
   FRED_API_KEY: undefined,           // → FRED fixture data
   COINMARKETCAP_API_KEY: undefined,  // → CMC fixture data
   ALPHA_VANTAGE_API_KEY: undefined,
-  FOUNDRY_URL: undefined,
-  FOUNDRY_CLIENT_ID: undefined,
-  FOUNDRY_CLIENT_SECRET: undefined,
-  FOUNDRY_TOKEN: undefined,
+  DATABASE_URL: undefined,
   MODE: "all",
   DRY_RUN: true,
   LOG_LEVEL: "warn",
