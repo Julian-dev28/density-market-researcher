@@ -5,64 +5,141 @@ import { SectorGrid } from "../components/SectorGrid";
 import { CryptoPanel } from "../components/CryptoPanel";
 import { ReportPanel } from "../components/ReportPanel";
 
-export default function Dashboard() {
-  const data = runPipeline();
+export const revalidate = 300; // ISR: revalidate every 5 minutes
 
-  // Regimes are embedded in sector/category objects by the transform layer
+const SectionLabel = ({
+  title,
+  meta,
+}: {
+  title: string;
+  meta?: string;
+}) => (
+  <div className="flex items-center gap-2 mb-2">
+    <h2 className="text-[9px] font-mono font-semibold uppercase tracking-widest text-zinc-500">
+      {title}
+    </h2>
+    {meta && (
+      <>
+        <span className="text-zinc-800">—</span>
+        <span className="text-[9px] font-mono text-zinc-700">{meta}</span>
+      </>
+    )}
+  </div>
+);
+
+export default async function Dashboard() {
+  const data = await runPipeline();
+
   const macroRegime = data.sectors[0]?.macroRegime ?? null;
   const cryptoRegime = data.categories[0]?.cryptoRegime ?? null;
+  const liveData = !!(
+    process.env.FRED_API_KEY || process.env.COINMARKETCAP_API_KEY
+  );
+
+  const updatedAt = new Date(data.generatedAt).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZoneName: "short",
+  });
 
   return (
-    <main className="max-w-7xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">
-            Macro + Crypto Research
-          </h1>
-          <p className="text-zinc-500 text-sm mt-1">
-            Foundry Macro Research · Fixture data · Updated{" "}
-            {new Date(data.generatedAt).toLocaleString()}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-zinc-500 uppercase tracking-wider">
-            Macro
-          </span>
-          <RegimeBadge regime={macroRegime} />
-          <span className="text-xs text-zinc-500 uppercase tracking-wider ml-2">
-            Crypto
-          </span>
-          <RegimeBadge regime={cryptoRegime} />
-        </div>
-      </div>
+    <div className="min-h-screen bg-[#07080a]">
+      {/* ── Top nav ── */}
+      <header className="border-b border-zinc-900 bg-[#070809]/95 backdrop-blur-sm sticky top-0 z-10">
+        <div className="max-w-screen-xl mx-auto px-6">
+          <div className="flex items-center justify-between h-11">
+            {/* Left: branding */}
+            <div className="flex items-center gap-3">
+              <span className="text-[9px] font-mono font-semibold text-zinc-700 uppercase tracking-[0.25em]">
+                Foundry
+              </span>
+              <span className="text-zinc-800 select-none">│</span>
+              <span className="text-sm font-semibold text-zinc-200 tracking-tight">
+                Macro Research
+              </span>
+            </div>
 
-      {/* Three-column data grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <div>
-          <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
-            Macro Indicators ({data.indicators.length})
-          </h2>
+            {/* Right: regime + live status */}
+            <div className="flex items-center gap-5">
+              {/* Regime indicators */}
+              <div className="hidden sm:flex items-center gap-2">
+                <span className="text-[9px] font-mono text-zinc-700 uppercase tracking-widest">
+                  Macro
+                </span>
+                <RegimeBadge regime={macroRegime} />
+                <span className="text-[9px] font-mono text-zinc-700 uppercase tracking-widest ml-1.5">
+                  Crypto
+                </span>
+                <RegimeBadge regime={cryptoRegime} />
+              </div>
+
+              {/* Live / fixture indicator */}
+              <div className="flex items-center gap-1.5 border-l border-zinc-800/60 pl-5">
+                <span
+                  className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                    liveData
+                      ? "bg-green-400 shadow-[0_0_4px_1px_rgba(74,222,128,0.5)]"
+                      : "bg-amber-500"
+                  }`}
+                />
+                <span className="text-[9px] font-mono text-zinc-600 whitespace-nowrap">
+                  {liveData ? "LIVE" : "FIXTURE"} · {updatedAt}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* ── Main ── */}
+      <main className="max-w-screen-xl mx-auto px-6 py-6 space-y-7">
+
+        {/* Macro Indicators — full width */}
+        <section>
+          <SectionLabel
+            title="Macro Indicators"
+            meta={`${data.indicators.length} series · SRC: FRED`}
+          />
           <MacroTable indicators={data.indicators} />
+        </section>
+
+        {/* Sectors + Crypto — 2-col on large screens */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-7">
+          <section>
+            <SectionLabel
+              title="Sector Performance"
+              meta={`${data.sectors.length} ETFs · SRC: Yahoo Finance`}
+            />
+            <SectorGrid sectors={data.sectors} />
+          </section>
+          <section>
+            <SectionLabel
+              title="Crypto Markets"
+              meta="SRC: CoinMarketCap · DeFiLlama · Alternative.me"
+            />
+            <CryptoPanel
+              metrics={data.cryptoMetrics}
+              categories={data.categories}
+            />
+          </section>
         </div>
 
-        <div>
-          <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
-            Sector Snapshots ({data.sectors.length})
-          </h2>
-          <SectorGrid sectors={data.sectors} />
-        </div>
+        {/* AI Report */}
+        <section>
+          <ReportPanel data={data} />
+        </section>
+      </main>
 
-        <div>
-          <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
-            Crypto Markets
-          </h2>
-          <CryptoPanel metrics={data.cryptoMetrics} categories={data.categories} />
-        </div>
-      </div>
-
-      {/* Streaming report */}
-      <ReportPanel data={data} />
-    </main>
+      {/* Footer */}
+      <footer className="border-t border-zinc-900 mt-12 px-6 py-4 max-w-screen-xl mx-auto">
+        <p className="text-[9px] font-mono text-zinc-700 tracking-wide">
+          FOR INFORMATIONAL PURPOSES ONLY · NOT FINANCIAL ADVICE · DATA MAY BE
+          DELAYED OR INACCURATE · DO NOT TRADE BASED ON THIS OUTPUT
+        </p>
+      </footer>
+    </div>
   );
 }

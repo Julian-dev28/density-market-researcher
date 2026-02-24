@@ -7,57 +7,64 @@ function fmtPct(val: number | null): string {
   return `${sign}${val.toFixed(2)}%`;
 }
 
+function PctCell({ val }: { val: number | null }) {
+  const cls =
+    val === null
+      ? "text-zinc-600"
+      : val > 0
+      ? "text-green-400"
+      : val < 0
+      ? "text-red-400"
+      : "text-zinc-500";
+  return (
+    <td className={`px-3 py-1.5 text-right font-mono text-xs tabular-nums whitespace-nowrap ${cls}`}>
+      {fmtPct(val)}
+    </td>
+  );
+}
+
+const TH = ({ children, right }: { children: React.ReactNode; right?: boolean }) => (
+  <th
+    className={`px-3 py-1.5 text-[9px] font-mono font-semibold uppercase tracking-widest text-zinc-600 whitespace-nowrap ${right ? "text-right" : "text-left"}`}
+  >
+    {children}
+  </th>
+);
+
 export function SectorGrid({ sectors }: { sectors: SectorSnapshot[] }) {
   return (
-    <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
-      <table className="w-full text-sm">
+    <div className="border border-zinc-800/80 rounded overflow-hidden">
+      <table className="w-full text-xs">
         <thead>
-          <tr className="border-b border-zinc-800">
-            <th className="text-left px-3 py-2 text-zinc-500 font-medium text-xs">
-              Sector
-            </th>
-            <th className="text-right px-3 py-2 text-zinc-500 font-medium text-xs">
-              YTD
-            </th>
-            <th className="text-right px-3 py-2 text-zinc-500 font-medium text-xs">
-              vs SPY
-            </th>
-            <th className="text-center px-3 py-2 text-zinc-500 font-medium text-xs">
-              Signal
-            </th>
+          <tr className="bg-zinc-900/70 border-b border-zinc-800/80">
+            <TH>Ticker</TH>
+            <TH>Sector</TH>
+            <TH right>1D</TH>
+            <TH right>1M</TH>
+            <TH right>YTD</TH>
+            <TH right>vs SPY</TH>
+            <TH>Sig</TH>
           </tr>
         </thead>
         <tbody>
           {sectors.map((s, i) => (
             <tr
               key={s.sectorTicker}
-              className={i % 2 === 0 ? "bg-zinc-900" : "bg-zinc-800/20"}
+              className={`border-b border-zinc-900 last:border-0 hover:bg-white/[0.02] transition-colors ${
+                i % 2 === 1 ? "bg-zinc-900/20" : ""
+              }`}
             >
-              <td className="px-3 py-2">
-                <div className="font-mono text-xs text-white font-medium">
-                  {s.sectorTicker}
-                </div>
-                <div className="text-zinc-500 text-xs truncate max-w-[8rem]">
-                  {s.sectorName}
-                </div>
+              <td className="px-3 py-1.5 font-mono font-semibold text-zinc-200">
+                {s.sectorTicker}
               </td>
-              <td
-                className={`px-3 py-2 text-right font-mono text-xs tabular-nums ${
-                  (s.ytdChangePct ?? 0) >= 0 ? "text-emerald-400" : "text-red-400"
-                }`}
-              >
-                {fmtPct(s.ytdChangePct)}
+              <td className="px-3 py-1.5 text-zinc-400 whitespace-nowrap">
+                {s.sectorName}
               </td>
-              <td
-                className={`px-3 py-2 text-right font-mono text-xs tabular-nums ${
-                  (s.relativeStrengthVsSPY ?? 0) >= 0
-                    ? "text-emerald-400"
-                    : "text-red-400"
-                }`}
-              >
-                {fmtPct(s.relativeStrengthVsSPY)}
-              </td>
-              <td className="px-3 py-2 text-center">
+              <PctCell val={s.dayChangePct} />
+              <PctCell val={s.monthChangePct} />
+              <PctCell val={s.ytdChangePct} />
+              <PctCell val={s.relativeStrengthVsSPY} />
+              <td className="px-3 py-1.5">
                 <SignalBadge signal={s.sectorSignal} />
               </td>
             </tr>

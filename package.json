@@ -1,0 +1,66 @@
+{
+  "name": "foundry-macro-research",
+  "version": "1.0.0",
+  "description": "Production-grade macro + crypto research pipeline for Palantir Foundry. Ingests FRED, Yahoo Finance, CoinMarketCap, DeFiLlama, and Fear & Greed data into linked Ontology objects, derives trading signals, infers macro/crypto regimes, and generates AI-powered investment research reports via Claude Opus 4.6.",
+  "homepage": "https://github.com/julian-m-dev/foundry-macro-research#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/julian-m-dev/foundry-macro-research.git"
+  },
+  "author": "Julian Martinez",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "dry-run": "tsx src/index.ts --dry-run",
+    "dry-run:crypto": "tsx src/index.ts --dry-run --mode crypto",
+    "dry-run:all": "tsx src/index.ts --dry-run --mode all",
+    "report": "tsx src/index.ts --dry-run --mode all --report",
+    "report:macro": "tsx src/index.ts --dry-run --mode macro --report",
+    "report:crypto": "tsx src/index.ts --dry-run --mode crypto --report",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:unit": "vitest run src/tests/unit",
+    "test:e2e": "vitest run src/tests/e2e",
+    "test:coverage": "vitest run --coverage"
+  },
+  "keywords": [
+    "palantir",
+    "foundry",
+    "osdk",
+    "ontology",
+    "macro",
+    "trading-research",
+    "fred",
+    "crypto",
+    "defi",
+    "coinmarketcap",
+    "defillama",
+    "sector-analysis",
+    "investment-research",
+    "anthropic",
+    "claude"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
+    "axios": "^1.7.2",
+    "chalk": "^4.1.2",
+    "commander": "^12.1.0",
+    "dotenv": "^16.4.5",
+    "zod": "^3.23.8"
+  },
+  "optionalDependencies": {
+    "@osdk/client": "^1.8.0",
+    "@osdk/oauth": "^1.8.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@vitest/coverage-v8": "^4.0.18",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.5",
+    "vitest": "^4.0.18"
+  }
+}

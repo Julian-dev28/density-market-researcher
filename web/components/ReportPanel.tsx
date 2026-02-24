@@ -28,11 +28,9 @@ export function ReportPanel({ data }: { data: PipelineOutput }) {
       });
 
       if (!res.ok) {
-        const text = await res.text();
-        setError(text || `Error ${res.status}`);
+        setError((await res.text()) || `Error ${res.status}`);
         return;
       }
-
       if (!res.body) {
         setError("No response stream");
         return;
@@ -40,7 +38,6 @@ export function ReportPanel({ data }: { data: PipelineOutput }) {
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -54,25 +51,27 @@ export function ReportPanel({ data }: { data: PipelineOutput }) {
   }
 
   return (
-    <div className="border border-zinc-800 rounded-xl bg-zinc-900 p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-sm font-semibold text-zinc-200">
+    <div className="border border-zinc-800/80 rounded overflow-hidden">
+      {/* Panel header */}
+      <div className="bg-zinc-900/70 border-b border-zinc-800/80 px-4 py-2.5 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <span className="text-[9px] font-mono font-semibold uppercase tracking-widest text-zinc-500">
             AI Research Report
-          </h2>
-          <p className="text-zinc-500 text-xs mt-0.5">
+          </span>
+          <span className="text-zinc-800">·</span>
+          <span className="text-[10px] font-mono text-zinc-700">
             Claude Opus 4.6 · macro + crypto synthesis · streams in real time
-          </p>
+          </span>
         </div>
         <button
           onClick={generate}
           disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-800 disabled:text-zinc-600 text-white text-sm font-medium transition-colors cursor-pointer disabled:cursor-not-allowed"
+          className="flex items-center gap-2 px-3 py-1.5 text-[10px] font-mono font-semibold uppercase tracking-widest rounded-sm bg-indigo-600/80 hover:bg-indigo-500/80 disabled:bg-zinc-800 disabled:text-zinc-600 text-white transition-colors cursor-pointer disabled:cursor-not-allowed border border-indigo-500/40 disabled:border-zinc-700/50"
         >
           {loading ? (
             <>
-              <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Generating…
+              <span className="w-2.5 h-2.5 border border-white/30 border-t-white rounded-full animate-spin" />
+              Generating...
             </>
           ) : (
             "Generate Report"
@@ -80,24 +79,32 @@ export function ReportPanel({ data }: { data: PipelineOutput }) {
         </button>
       </div>
 
-      {error && (
-        <div className="mb-4 p-3 bg-red-900/20 border border-red-800/50 rounded-lg text-red-400 text-sm">
-          {error}
-        </div>
-      )}
+      {/* Content area */}
+      <div className="p-5 bg-[#07080a]">
+        {error && (
+          <div className="mb-4 px-3 py-2 bg-red-950/20 border border-red-900/40 rounded text-red-400 text-[11px] font-mono">
+            ERROR: {error}
+          </div>
+        )}
 
-      {report && (
-        <div className="prose prose-invert prose-sm max-w-none border-t border-zinc-800 pt-4">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{report}</ReactMarkdown>
-        </div>
-      )}
+        {report && (
+          <div className="prose prose-invert prose-sm max-w-none">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{report}</ReactMarkdown>
+          </div>
+        )}
 
-      {!report && !loading && !error && (
-        <div className="text-zinc-600 text-sm text-center py-8 border-t border-zinc-800">
-          Click &ldquo;Generate Report&rdquo; to stream a full investment
-          research report from Claude Opus 4.6.
-        </div>
-      )}
+        {loading && !report && (
+          <div className="text-zinc-700 text-[11px] font-mono text-center py-10 animate-pulse">
+            ▋ generating...
+          </div>
+        )}
+
+        {!report && !loading && !error && (
+          <div className="text-zinc-700 text-[11px] font-mono text-center py-10">
+            [ Click &ldquo;Generate Report&rdquo; to stream a full investment research report ]
+          </div>
+        )}
+      </div>
     </div>
   );
 }
