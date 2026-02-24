@@ -45,71 +45,83 @@
 
 :root {
   --radius: 0.25rem;
-  --background: #f0ede6;
-  --foreground: #0e0f10;
-  --card: #e8e5de;
-  --card-foreground: #0e0f10;
-  --popover: #e8e5de;
-  --popover-foreground: #0e0f10;
-  --primary: #0e0f10;
-  --primary-foreground: #f0ede6;
-  --secondary: #ddd9d2;
-  --secondary-foreground: #0e0f10;
-  --muted: #ddd9d2;
-  --muted-foreground: #6b6860;
-  --accent: #718698;
-  --accent-foreground: #f0ede6;
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: rgba(14, 15, 16, 0.1);
-  --input: rgba(14, 15, 16, 0.1);
-  --ring: #718698;
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: #e8e5de;
-  --sidebar-foreground: #0e0f10;
-  --sidebar-primary: #0e0f10;
-  --sidebar-primary-foreground: #f0ede6;
-  --sidebar-accent: #ddd9d2;
-  --sidebar-accent-foreground: #0e0f10;
-  --sidebar-border: rgba(14, 15, 16, 0.1);
-  --sidebar-ring: #718698;
+
+  /* ── Warm white / light brown / pink / green / blue palette ── */
+  --background:         #faf7f2;
+  --foreground:         #1a1510;
+  --card:               #f4ede3;
+  --card-foreground:    #1a1510;
+  --popover:            #f4ede3;
+  --popover-foreground: #1a1510;
+  --primary:            #1a1510;
+  --primary-foreground: #faf7f2;
+  --secondary:          #ede4d6;
+  --secondary-foreground: #1a1510;
+  --muted:              #e8dfd0;
+  --muted-foreground:   #7a6a58;
+  --accent:             #4d7c5f;        /* muted green */
+  --accent-foreground:  #faf7f2;
+  --destructive:        #b84455;
+  --border:             rgba(90, 70, 50, 0.14);
+  --input:              rgba(90, 70, 50, 0.14);
+  --ring:               #4d7c5f;
+
+  /* signal / regime colours — adapted for light bg */
+  --green:  #3d6e4f;
+  --red:    #b84455;
+  --yellow: #b07a2a;
+  --blue:   #3d6a9e;
+  --pink:   #b86080;
+
+  --chart-1: #4d7c5f;   /* green */
+  --chart-2: #3d6a9e;   /* blue */
+  --chart-3: #b07a2a;   /* amber */
+  --chart-4: #b86080;   /* pink */
+  --chart-5: #7a5a8a;   /* muted purple */
+
+  --sidebar:                 #ede4d6;
+  --sidebar-foreground:      #1a1510;
+  --sidebar-primary:         #1a1510;
+  --sidebar-primary-foreground: #faf7f2;
+  --sidebar-accent:          #e0d4c2;
+  --sidebar-accent-foreground: #1a1510;
+  --sidebar-border:          rgba(90, 70, 50, 0.14);
+  --sidebar-ring:            #4d7c5f;
 }
 
+/* keep dark mode variables in sync so nothing breaks if dark is ever toggled */
 .dark {
-  --background: #080909;
-  --foreground: #f0ede6;
-  --card: #0e0f10;
-  --card-foreground: #f0ede6;
-  --popover: #0e0f10;
-  --popover-foreground: #f0ede6;
-  --primary: #f0ede6;
-  --primary-foreground: #080909;
-  --secondary: #1a1b1e;
-  --secondary-foreground: #f0ede6;
-  --muted: #111213;
-  --muted-foreground: #8a8a8a;
-  --accent: #718698;
-  --accent-foreground: #f0ede6;
-  --destructive: #f87171;
-  --border: rgba(255, 255, 255, 0.07);
-  --input: rgba(255, 255, 255, 0.07);
-  --ring: #718698;
-  --chart-1: #718698;
-  --chart-2: #4ade80;
-  --chart-3: #facc15;
-  --chart-4: #f87171;
-  --chart-5: #60a5fa;
-  --sidebar: #0e0f10;
-  --sidebar-foreground: #f0ede6;
-  --sidebar-primary: #f0ede6;
-  --sidebar-primary-foreground: #080909;
-  --sidebar-accent: #1a1b1e;
-  --sidebar-accent-foreground: #f0ede6;
-  --sidebar-border: rgba(255, 255, 255, 0.07);
-  --sidebar-ring: #718698;
+  --background:         #0f0d0a;
+  --foreground:         #f4ede3;
+  --card:               #1a1510;
+  --card-foreground:    #f4ede3;
+  --popover:            #1a1510;
+  --popover-foreground: #f4ede3;
+  --primary:            #f4ede3;
+  --primary-foreground: #0f0d0a;
+  --secondary:          #2a2218;
+  --secondary-foreground: #f4ede3;
+  --muted:              #1f1a14;
+  --muted-foreground:   #8a7a68;
+  --accent:             #5a9a6e;
+  --accent-foreground:  #f4ede3;
+  --destructive:        #e06070;
+  --border:             rgba(255, 240, 220, 0.08);
+  --input:              rgba(255, 240, 220, 0.08);
+  --ring:               #5a9a6e;
+  --chart-1: #5a9a6e;
+  --chart-2: #5a8ac8;
+  --chart-3: #d4a050;
+  --chart-4: #d4809a;
+  --chart-5: #9a7ab0;
+  --sidebar:                 #1a1510;
+  --sidebar-foreground:      #f4ede3;
+  --sidebar-primary:         #f4ede3;
+  --sidebar-primary-foreground: #0f0d0a;
+  --sidebar-accent:          #2a2218;
+  --sidebar-accent-foreground: #f4ede3;
+  --sidebar-border:          rgba(255, 240, 220, 0.08);
+  --sidebar-ring:            #5a9a6e;
 }
 
 @layer base {
@@ -146,7 +158,7 @@
   height: 12px;
   border-color: var(--accent);
   border-style: solid;
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
 .bracket-card::before {
@@ -169,22 +181,19 @@
   height: 4px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--muted);
 }
 ::-webkit-scrollbar-thumb {
   background: var(--accent);
-  opacity: 0.4;
+  opacity: 0.5;
   border-radius: 2px;
-}
-::-webkit-scrollbar-thumb:hover {
-  opacity: 0.8;
 }
 
 /* -------------------------------------------------------------------------
    Text selection
 ------------------------------------------------------------------------- */
 ::selection {
-  background: rgba(113, 134, 152, 0.3);
+  background: rgba(77, 124, 95, 0.2);
   color: var(--foreground);
 }
 
@@ -197,19 +206,4 @@
 }
 .cursor-blink {
   animation: blink 1s step-end infinite;
-}
-
-/* -------------------------------------------------------------------------
-   Noise texture overlay on sidebar
-------------------------------------------------------------------------- */
-.noise-overlay {
-  position: relative;
-}
-.noise-overlay::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-  pointer-events: none;
-  z-index: 0;
 }
