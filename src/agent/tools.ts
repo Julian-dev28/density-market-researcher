@@ -17,13 +17,17 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
       "Use 'Density' to get all macro indicator snapshots (GDP, CPI, unemployment, rates, yield curve, housing, sentiment, etc.) " +
       "with 52-week percentile rankings, period deltas, and BULLISH/BEARISH/NEUTRAL signals. " +
       "Use 'SectorSnapshot' to get all sector ETF performance (XLK, XLE, XLF, XLP, XLI, XLB, XLRE, XLU, XLV, XLY, SPY) " +
-      "with YTD%, relative strength vs SPY, macro regime, and signals.",
+      "with YTD%, relative strength vs SPY, macro regime, and signals. " +
+      "Use 'CryptoMetric' to get crypto market metrics (total market cap, BTC dominance, Fear & Greed, stablecoin supply, DeFi TVL, etc.) " +
+      "with period deltas and BULLISH/BEARISH/NEUTRAL signals. " +
+      "Use 'CategorySnapshot' to get crypto category breakdowns (Bitcoin, Ethereum, DeFi, Stablecoins, Altcoins) " +
+      "with market cap, dominance %, crypto regime, and signals.",
     input_schema: {
       type: "object" as const,
       properties: {
         objectType: {
           type: "string",
-          enum: ["Density", "SectorSnapshot"],
+          enum: ["Density", "SectorSnapshot", "CryptoMetric", "CategorySnapshot"],
           description: "The Foundry object type to read",
         },
       },

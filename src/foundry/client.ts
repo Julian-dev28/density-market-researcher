@@ -1,166 +1,91 @@
 import chalk from "chalk";
 import type { MacroIndicator, SectorSnapshot, CryptoMetric, CategorySnapshot } from "../types/index.js";
 import type { Config } from "../config.js";
-import { OBJECT_TYPES } from "./objectTypes.js";
 
 // ============================================================
-// Foundry REST API v2 Client
+// Foundry Actions Client
 //
-// Writes pipeline output directly to Foundry Ontology objects
-// using the Palantir Foundry API v2 with Bearer token auth.
+// Writes all four object types to Palantir Foundry using the
+// Ontology Actions API v2.
 //
-// Requires:
-//   FOUNDRY_URL   — Palantir stack base URL
-//   FOUNDRY_TOKEN — User or service-account token
+// Object types in Foundry:
+//   "Density"         → MacroIndicator  (matched by sourceUrl)
+//   "SectorSnapshot"  → SectorSnapshot  (matched by sectorTicker+date)
+//   "CryptoMetric"    → CryptoMetric    (matched by metricId)
+//   "CategorySnapshot"→ CategorySnapshot(matched by snapshotId)
 //
-// Object types written:
-//   • macro_indicator     (primary key: seriesId)
-//   • sector_snapshot     (primary key: snapshotId)
-//   • crypto_metric       (primary key: metricId)
-//   • category_snapshot   (primary key: snapshotId)
+// Actions used:
+//   create-density           / edit-density
+//   create-sector-snapshot   / edit-sector-snapshot
+//   create-crypto-metric     / edit-crypto-metric
+//   create-category-snapshot / edit-category-snapshot
 //
-// API reference:
-//   https://www.palantir.com/docs/foundry/api/ontology-resources/
+// API: POST /api/v2/ontologies/{ontology}/actions/{action}/apply
 // ============================================================
 
-// Cached per-process — avoids repeated discovery calls
-let _ontologyRid: string | null = null;
+const ONTOLOGY = "ontology-e6a83f07-70c3-4ec1-b7ce-b106a895b7ce";
 
-async function getOntologyRid(foundryUrl: string, token: string): Promise<string> {
-  if (_ontologyRid) return _ontologyRid;
+// ---------------------------------------------------------------------------
+// Foundry REST helpers
+// ---------------------------------------------------------------------------
 
-  const res = await fetch(`${foundryUrl}/api/v2/ontologies`, {
+async function applyAction(
+  foundryUrl: string,
+  token: string,
+  actionName: string,
+  parameters: Record<string, unknown>,
+): Promise<void> {
+  const url = `${foundryUrl}/api/v2/ontologies/${ONTOLOGY}/actions/${actionName}/apply`;
+  const res = await fetch(url, {
+    method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
+    body: JSON.stringify({ parameters }),
   });
 
   if (!res.ok) {
-    throw new Error(
-      `Ontology discovery failed: HTTP ${res.status} ${await res.text().catch(() => "")}`
-    );
+    const body = await res.text().catch(() => "");
+    throw new Error(`Action [${actionName}] failed: HTTP ${res.status} — ${body.slice(0, 300)}`);
   }
-
-  const json = await res.json() as { data?: Array<{ rid: string; apiName: string }>; ontologies?: Array<{ rid: string; apiName: string }> };
-  // Foundry returns { data: [ { rid, apiName, ... } ] }
-  const list: Array<{ rid: string; apiName: string }> = json.data ?? json.ontologies ?? [];
-  if (list.length === 0) throw new Error("No ontologies found in Foundry instance");
-
-  _ontologyRid = list[0].apiName ?? list[0].rid;
-  return _ontologyRid!;
+  // HTTP 200 + VALID = success
 }
 
-// ---------------------------------------------------------------------------
-// Single object upsert via Foundry REST API v2
-// Tries PATCH first (update existing); falls back to PUT (create-or-replace).
-// Both methods require the object type to allow direct edits.
-// ---------------------------------------------------------------------------
-
-async function upsertObject(
+async function listObjects(
   foundryUrl: string,
   token: string,
-  ontologyRid: string,
-  objectTypeApiName: string,
-  primaryKey: string,
-  properties: Record<string, unknown>,
-): Promise<void> {
-  const encoded = encodeURIComponent(primaryKey);
-  const url = `${foundryUrl}/api/v2/ontologies/${ontologyRid}/objects/${objectTypeApiName}/${encoded}`;
-
-  const headers = {
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-  };
-
-  // PATCH: update existing object properties
-  let res = await fetch(url, {
-    method: "PATCH",
-    headers,
-    body: JSON.stringify({ properties }),
+  objectType: string,
+): Promise<Record<string, unknown>[]> {
+  const url = `${foundryUrl}/api/v2/ontologies/${ONTOLOGY}/objects/${objectType}?pageSize=500`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
   });
-
-  // If PATCH not supported or object doesn't exist yet, try PUT
-  if (res.status === 404 || res.status === 405 || res.status === 415) {
-    res = await fetch(url, {
-      method: "PUT",
-      headers,
-      body: JSON.stringify({ primaryKey, properties }),
-    });
-  }
-
-  if (!res.ok) {
-    const errText = await res.text().catch(() => "");
-    throw new Error(
-      `Write failed [${objectTypeApiName}/${primaryKey}]: HTTP ${res.status} — ${errText.slice(0, 300)}`
-    );
-  }
+  if (!res.ok) return [];
+  const data = await res.json() as { data?: Record<string, unknown>[] };
+  return data.data ?? [];
 }
 
 // ---------------------------------------------------------------------------
-// Parallel batch upsert for a collection of objects
+// Density (MacroIndicator) upsert
+// Match existing objects by sourceUrl — a stable unique identifier per series.
 // ---------------------------------------------------------------------------
 
-async function batchUpsert<T>(
-  items: T[],
-  foundryUrl: string,
-  token: string,
-  ontologyRid: string,
-  objectTypeApiName: string,
-  getKey: (item: T) => string,
-  toProperties: (item: T) => Record<string, unknown>,
-  label: string,
-): Promise<{ synced: number; failed: number }> {
-  const results = await Promise.allSettled(
-    items.map(item =>
-      upsertObject(
-        foundryUrl,
-        token,
-        ontologyRid,
-        objectTypeApiName,
-        getKey(item),
-        toProperties(item),
-      )
-    )
-  );
-
-  const synced = results.filter(r => r.status === "fulfilled").length;
-  const failed = results.filter(r => r.status === "rejected").length;
-
-  if (failed > 0) {
-    const errors = results
-      .filter((r): r is PromiseRejectedResult => r.status === "rejected")
-      .slice(0, 3)
-      .map(r => r.reason?.message ?? String(r.reason));
-    console.warn(chalk.yellow(`  ⚠  ${label}: ${failed} write(s) failed — ${errors.join(" | ")}`));
-  }
-
-  return { synced, failed };
-}
-
-// ---------------------------------------------------------------------------
-// Property serializers — maps domain types to Foundry property maps.
-// JSON-serialized arrays (primaryMacroDrivers, primaryMetricDrivers) are
-// stored as strings because Foundry string-array properties require a
-// multi-value type that may not be configured on every stack.
-// ---------------------------------------------------------------------------
-
-function indicatorProps(ind: MacroIndicator): Record<string, unknown> {
+function densityParams(ind: MacroIndicator): Record<string, unknown> {
   return {
-    seriesId:        ind.seriesId,
     name:            ind.name,
     source:          ind.source,
     category:        ind.category,
     latestValue:     ind.latestValue,
     latestDate:      ind.latestDate,
     unit:            ind.unit,
-    priorValue:      ind.priorValue,
-    priorDate:       ind.priorDate,
-    periodDelta:     ind.periodDelta,
-    periodDeltaPct:  ind.periodDeltaPct,
-    yearLow:         ind.yearLow,
-    yearHigh:        ind.yearHigh,
-    yearPercentile:  ind.yearPercentile,
+    priorValue:      ind.priorValue ?? 0,
+    priorDate:       ind.priorDate ?? ind.latestDate,
+    periodDelta:     ind.periodDelta ?? 0,
+    periodDeltaPct:  ind.periodDeltaPct ?? 0,
+    yearLow:         ind.yearLow ?? ind.latestValue,
+    yearHigh:        ind.yearHigh ?? ind.latestValue,
+    yearPercentile:  ind.yearPercentile ?? 0.5,
     signal:          ind.signal,
     signalRationale: ind.signalRationale,
     frequency:       ind.frequency,
@@ -169,18 +94,65 @@ function indicatorProps(ind: MacroIndicator): Record<string, unknown> {
   };
 }
 
-function sectorProps(s: SectorSnapshot): Record<string, unknown> {
+async function upsertIndicators(
+  foundryUrl: string,
+  token: string,
+  indicators: MacroIndicator[],
+): Promise<{ synced: number; failed: number }> {
+  // Build map of existing Density objects: sourceUrl → primary key
+  const existing = await listObjects(foundryUrl, token, "Density");
+  const byUrl = new Map<string, string>(
+    existing
+      .filter(o => o.sourceUrl && o.__primaryKey)
+      .map(o => [String(o.sourceUrl), String(o.__primaryKey)])
+  );
+
+  const results = await Promise.allSettled(
+    indicators.map(async (ind) => {
+      const params = densityParams(ind);
+      const existingPk = byUrl.get(ind.sourceUrl);
+
+      if (existingPk) {
+        // Update existing object
+        await applyAction(foundryUrl, token, "edit-density", {
+          Density: existingPk,
+          ...params,
+        });
+      } else {
+        // Create new object
+        await applyAction(foundryUrl, token, "create-density", params);
+      }
+    })
+  );
+
+  const synced = results.filter(r => r.status === "fulfilled").length;
+  const failed = results.filter(r => r.status === "rejected").length;
+  if (failed > 0) {
+    const errs = results
+      .filter((r): r is PromiseRejectedResult => r.status === "rejected")
+      .slice(0, 3)
+      .map(r => r.reason?.message ?? String(r.reason));
+    console.warn(chalk.yellow(`  ⚠  Density: ${failed} failed — ${errs.join(" | ")}`));
+  }
+  return { synced, failed };
+}
+
+// ---------------------------------------------------------------------------
+// SectorSnapshot upsert
+// Match existing objects by sectorTicker + date composite key.
+// ---------------------------------------------------------------------------
+
+function sectorParams(s: SectorSnapshot): Record<string, unknown> {
   return {
-    snapshotId:            s.snapshotId,
     sectorTicker:          s.sectorTicker,
     sectorName:            s.sectorName,
     date:                  s.date,
-    dayChangePct:          s.dayChangePct,
-    weekChangePct:         s.weekChangePct,
-    monthChangePct:        s.monthChangePct,
-    ytdChangePct:          s.ytdChangePct,
-    relativeStrengthVsSPY: s.relativeStrengthVsSPY,
-    macroRegime:           s.macroRegime,
+    dayChangePct:          s.dayChangePct ?? 0,
+    weekChangePct:         s.weekChangePct ?? 0,
+    monthChangePct:        s.monthChangePct ?? 0,
+    ytdChangePct:          s.ytdChangePct ?? 0,
+    relativeStrengthVsSpy: s.relativeStrengthVsSPY ?? 0,
+    macroRegime:           s.macroRegime ?? "SLOWDOWN",
     primaryMacroDrivers:   JSON.stringify(s.primaryMacroDrivers),
     sectorSignal:          s.sectorSignal,
     signalRationale:       s.signalRationale,
@@ -188,7 +160,54 @@ function sectorProps(s: SectorSnapshot): Record<string, unknown> {
   };
 }
 
-function cryptoMetricProps(m: CryptoMetric): Record<string, unknown> {
+async function upsertSectors(
+  foundryUrl: string,
+  token: string,
+  sectors: SectorSnapshot[],
+): Promise<{ synced: number; failed: number }> {
+  // Build map: "TICKER_DATE" → primary key
+  const existing = await listObjects(foundryUrl, token, "SectorSnapshot");
+  const byComposite = new Map<string, string>(
+    existing
+      .filter(o => o.sectorTicker && o.date && o.__primaryKey)
+      .map(o => [`${o.sectorTicker}_${o.date}`, String(o.__primaryKey)])
+  );
+
+  const results = await Promise.allSettled(
+    sectors.map(async (s) => {
+      const params = sectorParams(s);
+      const compositeKey = `${s.sectorTicker}_${s.date}`;
+      const existingPk = byComposite.get(compositeKey);
+
+      if (existingPk) {
+        await applyAction(foundryUrl, token, "edit-sector-snapshot", {
+          SectorSnapshot: existingPk,
+          ...params,
+        });
+      } else {
+        await applyAction(foundryUrl, token, "create-sector-snapshot", params);
+      }
+    })
+  );
+
+  const synced = results.filter(r => r.status === "fulfilled").length;
+  const failed = results.filter(r => r.status === "rejected").length;
+  if (failed > 0) {
+    const errs = results
+      .filter((r): r is PromiseRejectedResult => r.status === "rejected")
+      .slice(0, 3)
+      .map(r => r.reason?.message ?? String(r.reason));
+    console.warn(chalk.yellow(`  ⚠  SectorSnapshot: ${failed} failed — ${errs.join(" | ")}`));
+  }
+  return { synced, failed };
+}
+
+// ---------------------------------------------------------------------------
+// CryptoMetric upsert
+// Match existing objects by metricId — stable identifier per metric.
+// ---------------------------------------------------------------------------
+
+function cryptoMetricParams(m: CryptoMetric): Record<string, unknown> {
   return {
     metricId:        m.metricId,
     name:            m.name,
@@ -197,24 +216,68 @@ function cryptoMetricProps(m: CryptoMetric): Record<string, unknown> {
     unit:            m.unit,
     latestValue:     m.latestValue,
     latestDate:      m.latestDate,
-    priorValue:      m.priorValue,
-    periodDelta:     m.periodDelta,
-    periodDeltaPct:  m.periodDeltaPct,
+    priorValue:      m.priorValue ?? 0,
+    periodDelta:     m.periodDelta ?? 0,
+    periodDeltaPct:  m.periodDeltaPct ?? 0,
     signal:          m.signal,
     signalRationale: m.signalRationale,
     lastUpdated:     m.lastUpdated,
   };
 }
 
-function categoryProps(c: CategorySnapshot): Record<string, unknown> {
+async function upsertCryptoMetrics(
+  foundryUrl: string,
+  token: string,
+  metrics: CryptoMetric[],
+): Promise<{ synced: number; failed: number }> {
+  const existing = await listObjects(foundryUrl, token, "CryptoMetric");
+  const byMetricId = new Map<string, string>(
+    existing
+      .filter(o => o.metricId && o.__primaryKey)
+      .map(o => [String(o.metricId), String(o.__primaryKey)])
+  );
+
+  const results = await Promise.allSettled(
+    metrics.map(async (m) => {
+      const params = cryptoMetricParams(m);
+      const existingPk = byMetricId.get(m.metricId);
+      if (existingPk) {
+        await applyAction(foundryUrl, token, "edit-crypto-metric", {
+          CryptoMetric: existingPk,
+          ...params,
+        });
+      } else {
+        await applyAction(foundryUrl, token, "create-crypto-metric", params);
+      }
+    })
+  );
+
+  const synced = results.filter(r => r.status === "fulfilled").length;
+  const failed = results.filter(r => r.status === "rejected").length;
+  if (failed > 0) {
+    const errs = results
+      .filter((r): r is PromiseRejectedResult => r.status === "rejected")
+      .slice(0, 3)
+      .map(r => r.reason?.message ?? String(r.reason));
+    console.warn(chalk.yellow(`  ⚠  CryptoMetric: ${failed} failed — ${errs.join(" | ")}`));
+  }
+  return { synced, failed };
+}
+
+// ---------------------------------------------------------------------------
+// CategorySnapshot upsert
+// Match existing objects by snapshotId (categorySlug + date).
+// ---------------------------------------------------------------------------
+
+function categorySnapshotParams(c: CategorySnapshot): Record<string, unknown> {
   return {
     snapshotId:           c.snapshotId,
     categoryName:         c.categoryName,
     categorySlug:         c.categorySlug,
-    totalMarketCapUsd:    c.totalMarketCapUsd,
-    dayChangePct:         c.dayChangePct,
-    dominancePct:         c.dominancePct,
-    cryptoRegime:         c.cryptoRegime,
+    totalMarketCapUsd:    c.totalMarketCapUsd ?? 0,
+    dayChangePct:         c.dayChangePct ?? 0,
+    dominancePct:         c.dominancePct ?? 0,
+    cryptoRegime:         c.cryptoRegime ?? "BEAR_MARKET",
     primaryMetricDrivers: JSON.stringify(c.primaryMetricDrivers),
     categorySignal:       c.categorySignal,
     signalRationale:      c.signalRationale,
@@ -222,47 +285,72 @@ function categoryProps(c: CategorySnapshot): Record<string, unknown> {
   };
 }
 
+async function upsertCategorySnapshots(
+  foundryUrl: string,
+  token: string,
+  categories: CategorySnapshot[],
+): Promise<{ synced: number; failed: number }> {
+  const existing = await listObjects(foundryUrl, token, "CategorySnapshot");
+  const bySnapshotId = new Map<string, string>(
+    existing
+      .filter(o => o.snapshotId && o.__primaryKey)
+      .map(o => [String(o.snapshotId), String(o.__primaryKey)])
+  );
+
+  const results = await Promise.allSettled(
+    categories.map(async (c) => {
+      const params = categorySnapshotParams(c);
+      const existingPk = bySnapshotId.get(c.snapshotId);
+      if (existingPk) {
+        await applyAction(foundryUrl, token, "edit-category-snapshot", {
+          CategorySnapshot: existingPk,
+          ...params,
+        });
+      } else {
+        await applyAction(foundryUrl, token, "create-category-snapshot", params);
+      }
+    })
+  );
+
+  const synced = results.filter(r => r.status === "fulfilled").length;
+  const failed = results.filter(r => r.status === "rejected").length;
+  if (failed > 0) {
+    const errs = results
+      .filter((r): r is PromiseRejectedResult => r.status === "rejected")
+      .slice(0, 3)
+      .map(r => r.reason?.message ?? String(r.reason));
+    console.warn(chalk.yellow(`  ⚠  CategorySnapshot: ${failed} failed — ${errs.join(" | ")}`));
+  }
+  return { synced, failed };
+}
+
 // ---------------------------------------------------------------------------
 // Dry-run console output
 // ---------------------------------------------------------------------------
 
 function printIndicator(ind: MacroIndicator): void {
-  const signalColor =
-    ind.signal === "BULLISH" ? chalk.green :
-    ind.signal === "BEARISH" ? chalk.red :
-    chalk.yellow;
-
+  const c = ind.signal === "BULLISH" ? chalk.green : ind.signal === "BEARISH" ? chalk.red : chalk.yellow;
   const delta = ind.periodDelta !== null
     ? `${ind.periodDelta > 0 ? "+" : ""}${ind.periodDelta.toFixed(3)} (${ind.periodDeltaPct?.toFixed(2)}%)`
     : "n/a";
-  const percentile = ind.yearPercentile !== null
-    ? `${(ind.yearPercentile * 100).toFixed(0)}th pctile`
-    : "";
-
+  const pct = ind.yearPercentile !== null ? `${(ind.yearPercentile * 100).toFixed(0)}th pctile` : "";
   console.log(
     `    ${chalk.cyan(ind.seriesId.padEnd(14))}  ` +
     `${chalk.white(String(ind.latestValue).padEnd(10))}  ` +
     `${chalk.dim(delta.padEnd(20))}  ` +
-    `${signalColor(ind.signal.padEnd(8))}  ` +
-    `${chalk.dim(percentile)}`
+    `${c(ind.signal.padEnd(8))}  ` +
+    `${chalk.dim(pct)}`
   );
 }
 
-function printSector(snap: SectorSnapshot): void {
-  const signalColor =
-    snap.sectorSignal === "BULLISH" ? chalk.green :
-    snap.sectorSignal === "BEARISH" ? chalk.red :
-    chalk.yellow;
-
-  const ytd = snap.ytdChangePct !== null
-    ? `YTD: ${snap.ytdChangePct > 0 ? "+" : ""}${snap.ytdChangePct.toFixed(2)}%` : "";
-  const rs = snap.relativeStrengthVsSPY !== null
-    ? ` RS: ${snap.relativeStrengthVsSPY > 0 ? "+" : ""}${snap.relativeStrengthVsSPY.toFixed(2)}%` : "";
-
+function printSector(s: SectorSnapshot): void {
+  const c = s.sectorSignal === "BULLISH" ? chalk.green : s.sectorSignal === "BEARISH" ? chalk.red : chalk.yellow;
+  const ytd = s.ytdChangePct !== null ? `YTD: ${s.ytdChangePct > 0 ? "+" : ""}${s.ytdChangePct.toFixed(2)}%` : "";
+  const rs = s.relativeStrengthVsSPY !== null ? ` RS: ${s.relativeStrengthVsSPY > 0 ? "+" : ""}${s.relativeStrengthVsSPY.toFixed(2)}%` : "";
   console.log(
-    `    ${chalk.cyan(snap.sectorTicker.padEnd(6))}  ` +
-    `${chalk.white(snap.sectorName.padEnd(26))}  ` +
-    `${signalColor(snap.sectorSignal.padEnd(8))}  ` +
+    `    ${chalk.cyan(s.sectorTicker.padEnd(6))}  ` +
+    `${chalk.white(s.sectorName.padEnd(26))}  ` +
+    `${c(s.sectorSignal.padEnd(8))}  ` +
     `${chalk.dim(ytd + rs)}`
   );
 }
@@ -271,107 +359,74 @@ function printSector(snap: SectorSnapshot): void {
 // Public API
 // ---------------------------------------------------------------------------
 
-export type SyncResult = {
-  indicatorsSynced: number;
-  sectorsSynced: number;
-  cryptoSynced: number;
-  categoriesSynced: number;
-};
-
 export async function syncToFoundry(
   indicators: MacroIndicator[],
   sectors: SectorSnapshot[],
   cryptoMetrics: CryptoMetric[],
-  categories: CategorySnapshot[],
-  cfg: Config
-): Promise<SyncResult> {
+  categorySnapshots: CategorySnapshot[],
+  cfg: Config,
+): Promise<{ indicatorsSynced: number; sectorsSynced: number; cryptoSynced: number; categoriesSynced: number }> {
   if (cfg.DRY_RUN) {
-    const total = indicators.length + sectors.length + cryptoMetrics.length + categories.length;
     console.log(chalk.yellow(
-      `\n[DRY RUN] Would write ${total} objects to Foundry Ontology:`
+      `\n[DRY RUN] Would write ${indicators.length} MacroIndicator + ${sectors.length} SectorSnapshot + ${cryptoMetrics.length} CryptoMetric + ${categorySnapshots.length} CategorySnapshot objects to Foundry\n`
     ));
-    console.log(chalk.dim(
-      `  MacroIndicator: ${indicators.length}  |  SectorSnapshot: ${sectors.length}  |  ` +
-      `CryptoMetric: ${cryptoMetrics.length}  |  CategorySnapshot: ${categories.length}\n`
-    ));
-
-    console.log(chalk.bold("  MACRO INDICATORS"));
+    console.log(chalk.bold("  MACRO INDICATORS (→ Density)"));
     console.log(chalk.dim(`  ${"Series ID".padEnd(14)}  ${"Value".padEnd(10)}  ${"Delta".padEnd(20)}  Signal    52w Range`));
     console.log(chalk.dim(`  ${"-".repeat(72)}`));
     indicators.forEach(printIndicator);
 
-    console.log(chalk.bold("\n  SECTOR SNAPSHOTS"));
+    console.log(chalk.bold("\n  SECTOR SNAPSHOTS (→ SectorSnapshot)"));
     console.log(chalk.dim(`  ${"Ticker".padEnd(6)}  ${"Sector".padEnd(26)}  Signal    Performance`));
     console.log(chalk.dim(`  ${"-".repeat(65)}`));
     sectors.forEach(printSector);
 
-    const macroRegime = sectors[0]?.macroRegime;
-    if (macroRegime) {
-      const col =
-        macroRegime === "EXPANSION" ? chalk.green :
-        macroRegime === "RECOVERY"  ? chalk.cyan  :
-        macroRegime === "SLOWDOWN"  ? chalk.yellow :
-        chalk.red;
-      console.log(chalk.bold(`\n  Macro Regime: ${col(macroRegime)}`));
+    const regime = sectors[0]?.macroRegime;
+    if (regime) {
+      const col = regime === "EXPANSION" ? chalk.green : regime === "RECOVERY" ? chalk.cyan : regime === "SLOWDOWN" ? chalk.yellow : chalk.red;
+      console.log(chalk.bold(`\n  Macro Regime: ${col(regime)}`));
     }
-
     return {
       indicatorsSynced: indicators.length,
-      sectorsSynced:    sectors.length,
-      cryptoSynced:     cryptoMetrics.length,
-      categoriesSynced: categories.length,
+      sectorsSynced: sectors.length,
+      cryptoSynced: cryptoMetrics.length,
+      categoriesSynced: categorySnapshots.length,
     };
   }
 
-  // ── Live Foundry writes ──────────────────────────────────────────────────
-  const foundryUrl   = cfg.FOUNDRY_URL;
-  const foundryToken = cfg.FOUNDRY_TOKEN;
-
-  if (!foundryUrl || !foundryToken) {
-    throw new Error(
-      "FOUNDRY_URL and FOUNDRY_TOKEN are required for live writes. " +
-      "Set DRY_RUN=true to test without credentials."
-    );
+  const { FOUNDRY_URL, FOUNDRY_TOKEN } = cfg;
+  if (!FOUNDRY_URL || !FOUNDRY_TOKEN) {
+    throw new Error("FOUNDRY_URL and FOUNDRY_TOKEN are required. Set DRY_RUN=true to skip.");
   }
 
-  console.log(chalk.cyan(`\n[Foundry] Syncing to ${foundryUrl} …`));
-
-  const ontologyRid = await getOntologyRid(foundryUrl, foundryToken);
-  console.log(chalk.dim(`  Ontology: ${ontologyRid}`));
+  console.log(chalk.cyan(`\n[Foundry] Syncing to ${FOUNDRY_URL} via Actions API …`));
+  console.log(chalk.dim(`  Ontology: ${ONTOLOGY}`));
 
   const [indResult, secResult, cryptoResult, catResult] = await Promise.all([
-    batchUpsert(
-      indicators, foundryUrl, foundryToken, ontologyRid,
-      OBJECT_TYPES.MACRO_INDICATOR.apiName,
-      i => i.seriesId, indicatorProps, "MacroIndicator",
-    ),
-    batchUpsert(
-      sectors, foundryUrl, foundryToken, ontologyRid,
-      OBJECT_TYPES.SECTOR_SNAPSHOT.apiName,
-      s => s.snapshotId, sectorProps, "SectorSnapshot",
-    ),
-    batchUpsert(
-      cryptoMetrics, foundryUrl, foundryToken, ontologyRid,
-      OBJECT_TYPES.CRYPTO_METRIC.apiName,
-      m => m.metricId, cryptoMetricProps, "CryptoMetric",
-    ),
-    batchUpsert(
-      categories, foundryUrl, foundryToken, ontologyRid,
-      OBJECT_TYPES.CATEGORY_SNAPSHOT.apiName,
-      c => c.snapshotId, categoryProps, "CategorySnapshot",
-    ),
+    upsertIndicators(FOUNDRY_URL, FOUNDRY_TOKEN, indicators),
+    upsertSectors(FOUNDRY_URL, FOUNDRY_TOKEN, sectors),
+    cryptoMetrics.length > 0
+      ? upsertCryptoMetrics(FOUNDRY_URL, FOUNDRY_TOKEN, cryptoMetrics)
+      : Promise.resolve({ synced: 0, failed: 0 }),
+    categorySnapshots.length > 0
+      ? upsertCategorySnapshots(FOUNDRY_URL, FOUNDRY_TOKEN, categorySnapshots)
+      : Promise.resolve({ synced: 0, failed: 0 }),
   ]);
 
   console.log(chalk.green(
-    `[Foundry] Sync complete — ` +
-    `Indicators: ${indResult.synced}, Sectors: ${secResult.synced}, ` +
-    `Crypto: ${cryptoResult.synced}, Categories: ${catResult.synced}`
+    `[Foundry] ✓ Indicators: ${indResult.synced} synced` +
+    (indResult.failed ? `, ${indResult.failed} failed` : "") +
+    `  |  Sectors: ${secResult.synced} synced` +
+    (secResult.failed ? `, ${secResult.failed} failed` : "") +
+    (cryptoResult.synced > 0 ? `  |  Crypto: ${cryptoResult.synced} synced` : "") +
+    (cryptoResult.failed > 0 ? `, ${cryptoResult.failed} failed` : "") +
+    (catResult.synced > 0 ? `  |  Categories: ${catResult.synced} synced` : "") +
+    (catResult.failed > 0 ? `, ${catResult.failed} failed` : "")
   ));
 
   return {
     indicatorsSynced: indResult.synced,
-    sectorsSynced:    secResult.synced,
-    cryptoSynced:     cryptoResult.synced,
+    sectorsSynced: secResult.synced,
+    cryptoSynced: cryptoResult.synced,
     categoriesSynced: catResult.synced,
   };
 }
