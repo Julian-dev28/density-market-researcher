@@ -137,15 +137,13 @@ async function main(): Promise<void> {
   // --- Sync ---
   console.log(chalk.bold("\n📡  Syncing to Foundry Ontology...\n"));
 
-  const { indicatorsSynced, sectorsSynced, cryptoSynced, categoriesSynced } = await syncToFoundry(
+  const { indicatorsSynced, sectorsSynced } = await syncToFoundry(
     indicators,
     sectorSnapshots,
-    cryptoMetrics,
-    categorySnapshots,
     config
   );
 
-  run.totalSynced = indicatorsSynced + sectorsSynced + cryptoSynced + categoriesSynced;
+  run.totalSynced = indicatorsSynced + sectorsSynced;
 
   // --- Report ---
   if (opts.report) {
