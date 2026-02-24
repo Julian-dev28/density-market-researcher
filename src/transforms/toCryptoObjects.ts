@@ -50,6 +50,11 @@ function deriveCryptoSignal(
       if (value < 45) return { signal: "BULLISH", rationale: `BTC dominance at ${value.toFixed(1)}% — alt season conditions, capital rotating into alts.` };
       return { signal: "NEUTRAL", rationale: `BTC dominance at ${value.toFixed(1)}% — balanced market structure.` };
 
+    case "ETH_DOMINANCE":
+      if (value > 18) return { signal: "BULLISH", rationale: `ETH dominance at ${value.toFixed(1)}% — strong ETH season, capital flowing into Ethereum ecosystem.` };
+      if (value < 10) return { signal: "BEARISH", rationale: `ETH dominance at ${value.toFixed(1)}% — ETH losing market share, capital rotating away.` };
+      return { signal: "NEUTRAL", rationale: `ETH dominance at ${value.toFixed(1)}% — neutral positioning.` };
+
     case "FEAR_GREED":
       if (value <= 25) return { signal: "BULLISH", rationale: `Extreme Fear (${value}) — historically a contrarian buy signal.` };
       if (value >= 75) return { signal: "BEARISH", rationale: `Extreme Greed (${value}) — historically a contrarian sell signal.` };

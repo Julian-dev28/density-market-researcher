@@ -8,7 +8,7 @@ let _db: Db | null = null;
 
 export function getDb(connectionString: string): Db {
   if (!_db) {
-    const sql = postgres(connectionString);
+    const sql = postgres(connectionString, { max: 3, idle_timeout: 10 });
     _db = drizzle(sql, { schema });
   }
   return _db;

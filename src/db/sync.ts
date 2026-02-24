@@ -167,9 +167,13 @@ async function upsertCryptoMetrics(
   if (failed > 0) {
     const errs = results
       .filter((r): r is PromiseRejectedResult => r.status === "rejected")
-      .slice(0, 3)
-      .map((r) => r.reason?.message ?? String(r.reason));
-    console.warn(chalk.yellow(`  ⚠  crypto_metrics: ${failed} failed — ${errs.join(" | ")}`));
+      .slice(0, 5)
+      .map((r) => {
+        const cause = r.reason?.cause?.message ?? r.reason?.cause ?? "";
+        const msg = r.reason?.message ?? String(r.reason);
+        return cause ? `${msg} | cause: ${cause}` : msg;
+      });
+    console.warn(chalk.yellow(`  ⚠  crypto_metrics: ${failed} failed — ${errs.join("\n    ")}`));
   }
   return { synced, failed };
 }
