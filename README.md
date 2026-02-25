@@ -1,4 +1,4 @@
-# Macro Research Pipeline
+# Density Market Researcher
 
 A live macro + crypto research system powered by **Claude Opus 4.6** and **Postgres** (via Supabase), with **Sentient Chat** integration, **CryptoAnalystBench** quality scoring, and **x402** USDC micropayment gating.
 
@@ -166,8 +166,8 @@ Total market cap, BTC dominance, ETH dominance, Fear & Greed Index, DeFi TVL, st
 ## Setup
 
 ```bash
-git clone https://github.com/Julian-dev28/foundry-macro-research
-cd foundry-macro-research
+git clone https://github.com/Julian-dev28/density-market-researcher
+cd density-market-researcher
 npm install
 ```
 
@@ -361,7 +361,7 @@ npm run typecheck # TypeScript type checking
 
 ## Live dashboard
 
-**https://web-juliandev28s-projects.vercel.app/dashboard**
+**https://web-seven-khaki-46.vercel.app/dashboard**
 
 Shows the current macro regime, conviction history chart, live indicators by category, latest research finding, sector performance, crypto metrics, and the full research feed with quality scores.
 
