@@ -1,5 +1,7 @@
 # Density Market Researcher
 
+[![Live Demo](https://img.shields.io/badge/live%20demo-web--seven--khaki--46.vercel.app-4d7c5f?style=flat-square&logo=vercel&logoColor=white)](https://web-seven-khaki-46.vercel.app)
+
 A live macro + crypto research system powered by **Claude Opus 4.6** and **Postgres** (via Supabase), with **Sentient Chat** integration, **CryptoAnalystBench** quality scoring, and **x402** USDC micropayment gating.
 
 Ingests real-time economic data from five sources, syncs structured objects to a Postgres database, then runs an autonomous AI research agent that reads its own prior conclusions, verifies whether they held up, identifies anomalies in live data, scores each note for analytical quality, and writes investment research notes — compounding intelligence over time. A Next.js dashboard surfaces everything live.
