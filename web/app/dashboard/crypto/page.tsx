@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { BracketCard } from "@/components/bracket-card";
 import { FadeIn, FadeInStagger, FadeInItem } from "@/components/fade-in";
+import { BtcPredictionPanel } from "@/components/btc-prediction-panel";
 
 const SIGNAL_COLORS: Record<string, string> = {
   BULLISH: "text-green-400",
@@ -48,6 +49,8 @@ export default async function CryptoPage() {
         <h1 className="text-sm font-mono tracking-[0.15em] text-muted-foreground uppercase">Crypto</h1>
         <p className="mt-1.5 text-xl font-semibold text-foreground">On-Chain Metrics & Market Structure</p>
       </div>
+
+      <BtcPredictionPanel />
 
       {Object.entries(byCategory).map(([category, rows], ci) => (
         <div key={category}>
