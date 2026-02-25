@@ -129,7 +129,7 @@ export function BtcPredictionPanel() {
           {/* Footer */}
           <div className="flex items-center justify-between border-t border-border/50 pt-2">
             <p className="text-[9px] font-mono text-muted-foreground/30 tracking-wide">
-              claude-sonnet-4-6 · binance 15m ohlcv
+              claude-sonnet-4-6 · kraken 15m ohlcv
             </p>
             <button
               onClick={predict}

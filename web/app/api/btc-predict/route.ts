@@ -1,7 +1,7 @@
 /**
  * BTC 15-Minute Prediction
  *
- * Fetches the last 16 15m BTC/USDT candles from Binance (public API, no key)
+ * Fetches the last 16 15m BTC/USD candles from Kraken (public API, no key)
  * and asks Claude Sonnet to predict the next 15-minute direction.
  *
  * Uses claude-sonnet-4-6 — smarter than Haiku, fast enough for real-time use.
@@ -45,31 +45,41 @@ export async function GET() {
   }
 
   try {
-    // Fetch 16 x 15m candles + current price from Binance (no auth required)
+    // Fetch 16 x 15m candles + current price from Kraken (no auth required)
+    // Kraken OHLC: [time, open, high, low, close, vwap, volume, count]
     const [klineRes, tickerRes] = await Promise.all([
-      fetch("https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=15m&limit=16"),
-      fetch("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"),
+      fetch("https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=15"),
+      fetch("https://api.kraken.com/0/public/Ticker?pair=XBTUSD"),
     ]);
 
     if (!klineRes.ok || !tickerRes.ok) {
-      throw new Error("Binance API unavailable");
+      throw new Error("Market data unavailable");
     }
 
-    const klines: (string | number)[][] = await klineRes.json();
-    const ticker: { price: string } = await tickerRes.json();
-    const currentPrice = parseFloat(ticker.price);
+    const klineJson = await klineRes.json();
+    const tickerJson = await tickerRes.json();
+
+    if (klineJson.error?.length || tickerJson.error?.length) {
+      throw new Error("Market data unavailable");
+    }
+
+    // Kraken returns up to 720 candles — take the last 16
+    const allCandles: (string | number)[][] = klineJson.result["XXBTZUSD"];
+    const klines = allCandles.slice(-16);
+    const currentPrice = parseFloat(tickerJson.result["XXBTZUSD"].c[0]);
 
     // Format candles as compact OHLCV text
+    // Kraken format: [time(unix), open, high, low, close, vwap, volume, count]
     const candleText = klines
       .map((k) => {
-        const t = new Date(k[0] as number).toISOString().slice(11, 16);
+        const t = new Date((k[0] as number) * 1000).toISOString().slice(11, 16);
         const o = parseFloat(k[1] as string).toFixed(0);
         const h = parseFloat(k[2] as string).toFixed(0);
         const l = parseFloat(k[3] as string).toFixed(0);
         const c = parseFloat(k[4] as string).toFixed(0);
-        const v = (parseFloat(k[5] as string) / 1000).toFixed(1);
+        const v = parseFloat(k[6] as string).toFixed(1);
         const chg = ((parseFloat(k[4] as string) - parseFloat(k[1] as string)) / parseFloat(k[1] as string) * 100).toFixed(2);
-        return `${t}  O:${o} H:${h} L:${l} C:${c}  V:${v}k  ${parseFloat(chg) >= 0 ? "+" : ""}${chg}%`;
+        return `${t}  O:${o} H:${h} L:${l} C:${c}  V:${v}  ${parseFloat(chg) >= 0 ? "+" : ""}${chg}%`;
       })
       .join("\n");
 
