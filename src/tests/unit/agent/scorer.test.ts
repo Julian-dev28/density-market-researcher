@@ -1,9 +1,11 @@
 /**
  * Quality Scorer Unit Tests
  *
- * Tests the CryptoAnalystBench-inspired quality scoring module.
- * No real Anthropic API calls — covers the no-key fallback path
+ * Tests the CryptoAnalystBench quality scoring module.
+ * No real API calls — covers the no-key fallback path
  * and interface/contract validation.
+ *
+ * Judge priority: Fireworks (Deepseek-v3.1-671B) → Claude Haiku → null
  */
 
 import { describe, it, expect } from "vitest";
@@ -45,27 +47,34 @@ const sampleNote: ResearchNote = {
 };
 
 // ---------------------------------------------------------------------------
-// No ANTHROPIC_API_KEY — graceful null return
+// No API keys — graceful null return
+// Judge priority: Fireworks (Deepseek-v3.1-671B) → Claude Haiku → null
 // ---------------------------------------------------------------------------
 
-describe("scoreResearchNote — no ANTHROPIC_API_KEY", () => {
-  it("returns null when no API key is set", async () => {
-    const originalKey = process.env.ANTHROPIC_API_KEY;
+describe("scoreResearchNote — no API keys", () => {
+  it("returns null when neither FIREWORKS_API_KEY nor ANTHROPIC_API_KEY is set", async () => {
+    const fw  = process.env.FIREWORKS_API_KEY;
+    const ant = process.env.ANTHROPIC_API_KEY;
+    delete process.env.FIREWORKS_API_KEY;
     delete process.env.ANTHROPIC_API_KEY;
 
     const result = await scoreResearchNote(sampleNote);
     expect(result).toBeNull();
 
-    if (originalKey) process.env.ANTHROPIC_API_KEY = originalKey;
+    if (fw)  process.env.FIREWORKS_API_KEY  = fw;
+    if (ant) process.env.ANTHROPIC_API_KEY  = ant;
   });
 
-  it("does not throw when no API key", async () => {
-    const originalKey = process.env.ANTHROPIC_API_KEY;
+  it("does not throw when no API keys are set", async () => {
+    const fw  = process.env.FIREWORKS_API_KEY;
+    const ant = process.env.ANTHROPIC_API_KEY;
+    delete process.env.FIREWORKS_API_KEY;
     delete process.env.ANTHROPIC_API_KEY;
 
     await expect(scoreResearchNote(sampleNote)).resolves.toBeNull();
 
-    if (originalKey) process.env.ANTHROPIC_API_KEY = originalKey;
+    if (fw)  process.env.FIREWORKS_API_KEY  = fw;
+    if (ant) process.env.ANTHROPIC_API_KEY  = ant;
   });
 });
 
@@ -114,7 +123,9 @@ describe("QualityScores interface", () => {
 
 describe("scoreResearchNote — input handling", () => {
   it("accepts a note with minimal fields without throwing", async () => {
+    const fw  = process.env.FIREWORKS_API_KEY;
     const originalKey = process.env.ANTHROPIC_API_KEY;
+    delete process.env.FIREWORKS_API_KEY;
     delete process.env.ANTHROPIC_API_KEY;
 
     const minimalNote: ResearchNote = {
@@ -130,11 +141,14 @@ describe("scoreResearchNote — input handling", () => {
 
     await expect(scoreResearchNote(minimalNote)).resolves.toBeNull();
 
+    if (fw)  process.env.FIREWORKS_API_KEY  = fw;
     if (originalKey) process.env.ANTHROPIC_API_KEY = originalKey;
   });
 
   it("handles a note with verifications without throwing", async () => {
+    const fw  = process.env.FIREWORKS_API_KEY;
     const originalKey = process.env.ANTHROPIC_API_KEY;
+    delete process.env.FIREWORKS_API_KEY;
     delete process.env.ANTHROPIC_API_KEY;
 
     const noteWithVerifications: ResearchNote = {
@@ -146,6 +160,7 @@ describe("scoreResearchNote — input handling", () => {
 
     await expect(scoreResearchNote(noteWithVerifications)).resolves.toBeNull();
 
+    if (fw)  process.env.FIREWORKS_API_KEY  = fw;
     if (originalKey) process.env.ANTHROPIC_API_KEY = originalKey;
   });
 });

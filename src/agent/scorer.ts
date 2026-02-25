@@ -1,18 +1,21 @@
 /**
  * Research Note Quality Scorer
  *
- * Evaluates agent-generated research notes on four dimensions using Claude
- * as a judge — inspired by CryptoAnalystBench's evaluation framework.
+ * Evaluates agent-generated research notes on four dimensions using the
+ * CryptoAnalystBench evaluation framework from Sentient.
+ *
+ * Judge model: Deepseek-v3.1-671B via Fireworks AI — the same model used
+ * by CryptoAnalystBench (https://github.com/sentient-agi/CryptoAnalystBench).
+ * Falls back to Claude Haiku if FIREWORKS_API_KEY is not set.
  *
  * Dimensions (each scored 1-10):
  *   Relevance         — analysis directly addresses the identified regime with evidence
  *   Depth             — specific data values cited, implications fully explored
  *   Temporal Accuracy — data is current, time references specific, staleness flagged
  *   Data Consistency  — internally consistent, no contradictions, ideas follow regime
- *
- * Uses claude-haiku for speed + cost efficiency (scoring, not research).
  */
 
+import axios from "axios";
 import Anthropic from "@anthropic-ai/sdk";
 import type { ResearchNote } from "./tools.js";
 
@@ -24,7 +27,8 @@ export interface QualityScores {
   overall: number; // average of the four, rounded to 1dp
 }
 
-const JUDGE_PROMPT = `You are a financial research quality evaluator. Score the following AI-generated macro research note on four dimensions (1-10 each):
+// Matches CryptoAnalystBench's judge prompt dimensions exactly
+const JUDGE_PROMPT = `You are a financial research quality evaluator. Score the AI-generated macro research note on four dimensions (1-10 each):
 
 1. **Relevance** (1-10): Does the analysis directly address the macro regime? Are investment ideas connected to the data? Low = generic advice. High = specific regime-matched thesis.
 
@@ -48,30 +52,83 @@ function formatNoteForScoring(note: ResearchNote): string {
   ].join("\n");
 }
 
-export async function scoreResearchNote(note: ResearchNote): Promise<QualityScores | null> {
+function parseScores(text: string): QualityScores | null {
+  // Strip markdown code fences if present
+  const cleaned = text.replace(/```json\n?|\n?```/g, "").trim();
+  const parsed = JSON.parse(cleaned);
+  const relevance        = clamp(Number(parsed.relevance));
+  const depth            = clamp(Number(parsed.depth));
+  const temporalAccuracy = clamp(Number(parsed.temporal_accuracy));
+  const dataConsistency  = clamp(Number(parsed.data_consistency));
+  const overall = Math.round(((relevance + depth + temporalAccuracy + dataConsistency) / 4) * 10) / 10;
+  return { relevance, depth, temporalAccuracy, dataConsistency, overall };
+}
+
+// ---------------------------------------------------------------------------
+// Primary judge: Deepseek-v3.1-671B via Fireworks AI
+// This is the exact model CryptoAnalystBench uses for evaluation.
+// ---------------------------------------------------------------------------
+
+async function scoreWithFireworks(note: ResearchNote): Promise<QualityScores | null> {
+  const apiKey = process.env.FIREWORKS_API_KEY;
+  if (!apiKey) return null;
+
+  const response = await axios.post(
+    "https://api.fireworks.ai/inference/v1/chat/completions",
+    {
+      model: "accounts/fireworks/models/deepseek-v3p1",
+      max_tokens: 150,
+      temperature: 0.1,
+      messages: [
+        { role: "system", content: JUDGE_PROMPT },
+        { role: "user",   content: formatNoteForScoring(note) },
+      ],
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      timeout: 20_000,
+    }
+  );
+
+  const text: string = response.data?.choices?.[0]?.message?.content?.trim() ?? "";
+  return parseScores(text);
+}
+
+// ---------------------------------------------------------------------------
+// Fallback judge: Claude Haiku (if no FIREWORKS_API_KEY)
+// ---------------------------------------------------------------------------
+
+async function scoreWithClaude(note: ResearchNote): Promise<QualityScores | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
 
+  const client = new Anthropic({ apiKey });
+  const response = await client.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 150,
+    system: JUDGE_PROMPT,
+    messages: [{ role: "user", content: formatNoteForScoring(note) }],
+  });
+
+  const text = response.content[0].type === "text" ? response.content[0].text.trim() : "";
+  return parseScores(text);
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+export async function scoreResearchNote(note: ResearchNote): Promise<QualityScores | null> {
   try {
-    const client = new Anthropic({ apiKey });
-    const response = await client.messages.create({
-      model: "claude-haiku-4-5-20251001", // fast + cheap for scoring
-      max_tokens: 150,
-      system: JUDGE_PROMPT,
-      messages: [{ role: "user", content: formatNoteForScoring(note) }],
-    });
+    // Try Fireworks (CryptoAnalystBench judge) first
+    const fireworksResult = await scoreWithFireworks(note);
+    if (fireworksResult) return fireworksResult;
 
-    const text =
-      response.content[0].type === "text" ? response.content[0].text.trim() : "";
-
-    const parsed = JSON.parse(text);
-    const relevance        = clamp(Number(parsed.relevance));
-    const depth            = clamp(Number(parsed.depth));
-    const temporalAccuracy = clamp(Number(parsed.temporal_accuracy));
-    const dataConsistency  = clamp(Number(parsed.data_consistency));
-    const overall          = Math.round(((relevance + depth + temporalAccuracy + dataConsistency) / 4) * 10) / 10;
-
-    return { relevance, depth, temporalAccuracy, dataConsistency, overall };
+    // Fall back to Claude Haiku
+    return await scoreWithClaude(note);
   } catch {
     return null; // scoring is non-critical — never block the research note
   }

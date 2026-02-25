@@ -13,6 +13,8 @@ const ConfigSchema = z.object({
   ALPHA_VANTAGE_API_KEY: z.string().optional(),
   /** CoinMarketCap API key — free at https://coinmarketcap.com/api/ */
   COINMARKETCAP_API_KEY: z.string().optional(),
+  /** Fireworks AI — Deepseek-v3.1-671B judge for CryptoAnalystBench scoring */
+  FIREWORKS_API_KEY: z.string().optional(),
   /** OpenHands Cloud API key — https://app.all-hands.dev */
   OPENHANDS_API_KEY: z.string().optional(),
   /** GitHub repo for OpenHands to operate on (e.g. "org/repo") */
